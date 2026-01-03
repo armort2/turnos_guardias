@@ -1,0 +1,223 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h5 class="mb-0">Consulta de turnos por trabajador</h5>
+  <a class="btn btn-outline-secondary" href="/turnos">Volver a listado por día</a>
+</div>
+
+<div class="card shadow-sm mb-3">
+  <div class="card-body">
+    <form method="get" class="row g-2 align-items-end" id="formConsulta">
+
+      <div class="col-md-5">
+        <label class="form-label small text-muted">Obra / Instalación</label>
+        <select class="form-select" name="instalacion_id" id="instalacionSelect" required>
+          <option value="">-- Seleccionar instalación --</option>
+          {% for inst in instalaciones %}
+            <option value="{{ inst.id }}" {% if instalacion_id == inst.id %}selected{% endif %}>
+              {{ inst.nombre }}
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="col-md-4">
+        <label class="form-label small text-muted">Trabajador (con turnos en la instalación)</label>
+        <select class="form-select" name="guardia_rut" id="guardiaSelect" {% if not instalacion_id %}disabled{% endif %} required>
+          <option value="">-- Seleccionar trabajador --</option>
+          {# Se llena por JS al elegir instalación #}
+        </select>
+        <div class="form-text">Se muestran solo guardias activos con turnos registrados en esa instalación.</div>
+      </div>
+
+      <div class="col-md-3"></div>
+
+      <div class="col-md-3">
+        <label class="form-label small text-muted">Desde</label>
+        <input class="form-control" type="date" name="desde"
+               value="{{ resumen.desde.strftime('%Y-%m-%d') if resumen.desde else sugerido_desde.strftime('%Y-%m-%d') }}">
+      </div>
+
+      <div class="col-md-3">
+        <label class="form-label small text-muted">Hasta</label>
+        <input class="form-control" type="date" name="hasta"
+               value="{{ resumen.hasta.strftime('%Y-%m-%d') if resumen.hasta else sugerido_hasta.strftime('%Y-%m-%d') }}">
+      </div>
+
+      <div class="col-md-2 d-grid">
+        <button class="btn btn-primary">Consultar</button>
+      </div>
+
+    </form>
+  </div>
+</div>
+
+{% if guardia and turnos %}
+<div class="card shadow-sm mb-3">
+  <div class="card-body">
+    <div class="d-flex justify-content-between flex-wrap gap-2">
+      <div>
+        <h6 class="mb-1">{{ resumen.nombre }}</h6>
+        <div class="text-muted small">
+          Instalación: <b>{{ resumen.instalacion_nombre }}</b>
+        </div>
+        <div class="text-muted small">
+          RUT: <b>{{ resumen.rut }}</b> · Modalidad: <b>{{ resumen.modalidad }}</b>
+        </div>
+        <div class="text-muted small">
+          Turnos: <b>{{ resumen.cantidad_turnos }}</b> (Día: {{ resumen.turnos_dia }}, Noche: {{ resumen.turnos_noche }}) ·
+          Valorizados: <b>{{ resumen.cantidad_valorizados }}</b>
+        </div>
+      </div>
+
+      <div class="text-end">
+        <div class="text-muted small">Total valorizado</div>
+        <div style="font-size: 1.25rem;">
+          <b>${{ "{:,}".format(resumen.monto_total).replace(",", ".") }}</b>
+        </div>
+        <div class="text-muted small">
+          Base: ${{ "{:,}".format(resumen.monto_base).replace(",", ".") }} ·
+          Recargo: ${{ "{:,}".format(resumen.monto_recargo).replace(",", ".") }}
+        </div>
+        <div class="text-muted small">
+          {% set mins = (resumen.minutos_feriado or 0) %}
+          {% set h = (mins // 60) %}
+          {% set m = (mins % 60) %}
+          Hrs. feriado total:
+          <b>
+            {% if mins == 0 %}0 h
+            {% elif m == 0 %}{{ h }} h
+            {% else %}{{ h }} h {{ m }} m
+            {% endif %}
+          </b>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card shadow-sm">
+  <div class="card-body">
+    <h6 class="mb-3">Detalle de turnos</h6>
+
+    <div class="table-responsive">
+      <table class="table table-sm align-middle">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Turno</th>
+            <th>Inicio</th>
+            <th>Fin</th>
+            <th>Hrs. feriado</th>
+            <th>Recargo</th>
+            <th>Monto</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for t in turnos %}
+          <tr>
+            <td>{{ t.id }}</td>
+            <td>
+              {% if t.turno_codigo == "DIA" %}
+                <span class="badge bg-info text-dark">DÍA</span>
+              {% else %}
+                <span class="badge bg-dark">NOCHE</span>
+              {% endif %}
+              {% if t.es_adicional %}
+                <span class="badge bg-success ms-1">Adicional</span>
+              {% endif %}
+            </td>
+
+            <td>{{ t.inicio_dt.strftime("%d-%m-%Y %H:%M") }}</td>
+            <td>{{ t.fin_dt.strftime("%d-%m-%Y %H:%M") }}</td>
+
+            <td>
+              {% set mins = (t.minutos_feriado or 0) %}
+              {% set h = (mins // 60) %}
+              {% set m = (mins % 60) %}
+              {% if mins == 0 %}
+                0 h
+              {% elif m == 0 %}
+                {{ h }} h
+              {% else %}
+                {{ h }} h {{ m }} m
+              {% endif %}
+            </td>
+
+            <td>
+              {% if t.minutos_feriado and t.minutos_feriado > 0 %}
+                <span class="badge bg-warning text-dark"
+                      {% if t.feriado_detalle_calculo %}title="{{ t.feriado_detalle_calculo }}"{% endif %}>
+                  {{ t.feriado_tipo_aplicado }} {{ t.feriado_porcentaje_aplicado }}%
+                </span>
+              {% else %}
+                -
+              {% endif %}
+            </td>
+
+            <td>
+              ${{ "{:,}".format(t.monto_total or 0).replace(",", ".") }}
+              {% if t.monto_recargo and t.monto_recargo > 0 %}
+                <div class="text-muted small">Recargo: ${{ "{:,}".format(t.monto_recargo).replace(",", ".") }}</div>
+              {% endif %}
+            </td>
+
+            <td class="text-end">
+              <a class="btn btn-sm btn-outline-primary" href="/turnos/{{ t.id }}/editar">Editar</a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+  </div>
+</div>
+{% elif instalacion_id and guardia_rut and not turnos %}
+<div class="alert alert-info">No hay turnos en el rango consultado.</div>
+{% else %}
+<div class="alert alert-secondary">Selecciona una instalación, un trabajador y un rango de fechas para consultar.</div>
+{% endif %}
+
+<script>
+  async function cargarGuardias(instId, rutSeleccionado) {
+    const guardiaSelect = document.getElementById("guardiaSelect");
+    guardiaSelect.innerHTML = '<option value="">-- Seleccionar trabajador --</option>';
+
+    if (!instId) {
+      guardiaSelect.disabled = true;
+      return;
+    }
+
+    guardiaSelect.disabled = true;
+    const res = await fetch(`/api/guardias-por-instalacion?inst_id=${instId}`);
+    const data = await res.json();
+
+    for (const g of data) {
+      const opt = document.createElement("option");
+      opt.value = g.rut;
+      opt.textContent = g.label;
+      if (rutSeleccionado && rutSeleccionado === g.rut) opt.selected = true;
+      guardiaSelect.appendChild(opt);
+    }
+
+    guardiaSelect.disabled = false;
+  }
+
+  document.addEventListener("DOMContentLoaded", () => {
+    const instalacionSelect = document.getElementById("instalacionSelect");
+    const instId = instalacionSelect.value;
+    const rutSeleccionado = "{{ guardia_rut or '' }}";
+
+    // si ya hay instalación seleccionada (vuelve de consulta), cargamos guardias
+    cargarGuardias(instId, rutSeleccionado);
+
+    instalacionSelect.addEventListener("change", () => {
+      cargarGuardias(instalacionSelect.value, "");
+    });
+  });
+</script>
+
+{% endblock %}

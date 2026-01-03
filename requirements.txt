@@ -1,0 +1,22 @@
+# Core
+Flask==3.0.3
+Werkzeug==3.1.4
+
+# ORM / DB
+Flask-SQLAlchemy==3.1.1
+SQLAlchemy==2.0.30
+Flask-Migrate==4.0.7
+psycopg2-binary==2.9.9
+
+# Auth
+Flask-Login==0.6.3
+
+# Data / Excel
+pandas==2.2.2
+openpyxl==3.1.5
+
+# Migrations
+alembic==1.11.1
+
+# Other
+gunicorn==22.0.0

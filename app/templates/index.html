@@ -1,0 +1,185 @@
+{% extends "base.html" %}
+{% block content %}
+
+{% if not current_user.is_authenticated %}
+
+  <div class="panel">
+    <div class="page-title">
+      <h5>Turnos Guardias</h5>
+      <div class="page-subtitle">Control operativo de turnos, trazabilidad y reportabilidad.</div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="row g-3 align-items-stretch">
+      <div class="col-12 col-lg-8">
+        <div class="card h-100">
+          <div class="card-body">
+            <h6 class="mb-2 fw-bold">Bienvenido</h6>
+            <p class="mb-3 text-muted">
+              Para acceder al registro de turnos, consulta por trabajador y reportes, debes iniciar sesión.
+            </p>
+
+            <div class="d-flex gap-2 flex-wrap">
+              <a class="btn btn-primary" href="/login">
+                <i class="bi bi-box-arrow-in-right me-2"></i>
+                Iniciar sesión
+              </a>
+
+              <a class="btn btn-outline-light border" href="/turnos">
+                <i class="bi bi-list-check me-2"></i>
+                Ver listado
+              </a>
+              {# Si NO quieres que invitados vean listado, elimina el botón de arriba #}
+            </div>
+
+            <div class="mt-3 small text-muted">
+              Nota: Por seguridad, las métricas operativas se visualizan solo con sesión iniciada.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-12 col-lg-4">
+        <div class="card h-100">
+          <div class="card-header">Estado general</div>
+          <div class="card-body">
+            <div class="small text-muted mb-2">Disponibilidad</div>
+            <span class="badge badge-success">
+              <i class="bi bi-check-circle me-1"></i>
+              Operativo
+            </span>
+
+            <div class="divider"></div>
+
+            <div class="small text-muted">
+              Si necesitas acceso, solicita credenciales al administrador.
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+{% else %}
+
+  <div class="page-title">
+    <h5>Dashboard</h5>
+    <div class="page-subtitle">
+      Vista rápida de operación y accesos directos.
+    </div>
+  </div>
+
+  <div class="row g-3 mb-3">
+    <div class="col-12 col-md-6 col-xl-3">
+      <div class="card h-100">
+        <div class="card-body">
+          <div class="small text-muted">Guardias</div>
+          <div class="fs-3 fw-bold">{{ stats.guardias }}</div>
+          <div class="small text-muted">Total registrados</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-12 col-md-6 col-xl-3">
+      <div class="card h-100">
+        <div class="card-body">
+          <div class="small text-muted">Instalaciones</div>
+          <div class="fs-3 fw-bold">{{ stats.instalaciones }}</div>
+          <div class="small text-muted">Obras / sedes</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-12 col-md-6 col-xl-3">
+      <div class="card h-100">
+        <div class="card-body">
+          <div class="small text-muted">Turnos registrados</div>
+          <div class="fs-3 fw-bold">{{ stats.turnos }}</div>
+          <div class="small text-muted">Histórico</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-12 col-md-6 col-xl-3">
+      <div class="card h-100">
+        <div class="card-body">
+          <div class="small text-muted">Feriados cargados</div>
+          <div class="fs-3 fw-bold">{{ stats.feriados }}</div>
+          <div class="small text-muted">Calendario</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-3">
+    <div class="col-12 col-lg-6">
+      <div class="card h-100">
+        <div class="card-header">Acciones rápidas</div>
+        <div class="card-body">
+          <div class="d-flex gap-2 flex-wrap">
+
+            <a class="btn btn-primary" href="/turnos/nuevo">
+              <i class="bi bi-clock-history me-2"></i>
+              Registrar turno
+            </a>
+
+            <a class="btn btn-outline-light border" href="/turnos/por-guardia">
+              <i class="bi bi-person-lines-fill me-2"></i>
+              Consulta por trabajador
+            </a>
+
+            <a class="btn btn-outline-light border" href="/guardias">
+              <i class="bi bi-people me-2"></i>
+              Ver guardias
+            </a>
+
+            <a class="btn btn-outline-light border" href="/import-guardias">
+              <i class="bi bi-upload me-2"></i>
+              Importar guardias
+            </a>
+
+            {% if (current_user.rol or "")|upper in ["ADMIN","OPERADOR","REVISOR"] %}
+              <a class="btn btn-outline-light border" href="/reportes/resumen-turnos">
+                <i class="bi bi-bar-chart me-2"></i>
+                Resumen turnos
+              </a>
+            {% endif %}
+
+            {% if current_user.es_admin() %}
+              <a class="btn btn-outline-light border" href="/usuarios">
+                <i class="bi bi-person-gear me-2"></i>
+                Gestión de usuarios
+              </a>
+            {% endif %}
+
+          </div>
+
+          <div class="divider"></div>
+
+          <div class="small text-muted">
+            Sugerencia operativa: prioriza “Registrar turno” para mantener trazabilidad y consistencia en reportes.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-12 col-lg-6">
+      <div class="card h-100">
+        <div class="card-header">Resumen</div>
+        <div class="card-body">
+          <ul class="mb-0">
+            <li>Perfil activo: <b>{{ (current_user.rol or "USUARIO")|upper }}</b></li>
+            <li>Objetivo: operación ordenada y sin “turnos fantasma”.</li>
+            <li>Próximo paso recomendado: incorporar “puestos” (si lo deciden) para granularidad.</li>
+          </ul>
+
+          {# Si luego quieres: aquí agregamos “últimos 10 turnos” o “pendientes por validar” #}
+        </div>
+      </div>
+    </div>
+  </div>
+
+{% endif %}
+
+{% endblock %}

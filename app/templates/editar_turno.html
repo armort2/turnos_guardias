@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card shadow-sm">
+  <div class="card-body">
+    <h5 class="card-title mb-3">Editar turno #{{ turno.id }}</h5>
+
+    <form method="post">
+      <div class="row g-3">
+        <div class="col-md-6">
+          <label class="form-label">Instalación</label>
+          <select class="form-select" name="instalacion_id" required>
+            {% for i in instalaciones %}
+              <option value="{{ i.id }}" {% if i.id == turno.instalacion_id %}selected{% endif %}>
+                {{ i.nombre }}
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="col-md-6">
+          <label class="form-label">Guardia (RUT)</label>
+          <input class="form-control" name="guardia_rut" value="{{ turno.guardia_rut }}" list="guardiasList" required>
+          <datalist id="guardiasList"></datalist>
+          <div class="form-text">Puedes escribir RUT o apellido para autocompletar.</div>
+        </div>
+
+        <div class="col-md-6">
+          <label class="form-label">Fecha de inicio</label>
+          <input class="form-control" type="date" name="fecha" value="{{ turno.inicio_dt.date() }}" required>
+        </div>
+
+        <div class="col-md-6">
+          <label class="form-label">Tipo de turno</label>
+          <select class="form-select" name="turno_codigo" required>
+            <option value="DIA" {% if turno.turno_codigo == "DIA" %}selected{% endif %}>Día (08:00–20:00)</option>
+            <option value="NOCHE" {% if turno.turno_codigo == "NOCHE" %}selected{% endif %}>Noche (20:00–08:00)</option>
+          </select>
+        </div>
+
+        <div class="col-12">
+          <label class="form-label">Observación</label>
+          <input class="form-control" name="observacion" maxlength="250" value="{{ turno.observacion or '' }}">
+        </div>
+      </div>
+
+      <div class="mt-3 d-flex gap-2">
+        <button class="btn btn-success" type="submit">Guardar cambios</button>
+        <a class="btn btn-secondary" href="/turnos">Volver</a>
+      </div>
+    </form>
+
+    <hr class="my-4">
+
+    <h6>Anular turno (recomendado en vez de borrar)</h6>
+    <form method="post" action="/turnos/{{ turno.id }}/anular" class="row g-2 align-items-end">
+      <div class="col-md-8">
+        <label class="form-label">Motivo</label>
+        <input class="form-control" name="motivo" maxlength="250" placeholder="Ej: Turno duplicado / error de fecha / guardia incorrecto">
+      </div>
+      <div class="col-md-4">
+        <button class="btn btn-danger w-100" type="submit">Anular turno</button>
+      </div>
+    </form>
+
+  </div>
+</div>
+
+<script>
+async function cargarGuardias(q) {
+  const res = await fetch(`/api/guardias?q=${encodeURIComponent(q)}`);
+  const data = await res.json();
+  const dl = document.getElementById("guardiasList");
+  dl.innerHTML = "";
+  data.forEach(item => {
+    const opt = document.createElement("option");
+    opt.value = item.rut;
+    opt.label = item.label;
+    dl.appendChild(opt);
+  });
+}
+
+const input = document.querySelector('input[name="guardia_rut"]');
+input.addEventListener("input", (e) => {
+  const q = e.target.value.trim();
+  if (q.length >= 2) cargarGuardias(q);
+});
+</script>
+{% endblock %}

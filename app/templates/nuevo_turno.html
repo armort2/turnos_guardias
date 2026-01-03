@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="row g-3">
+  <div class="col-lg-6">
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <h5 class="card-title mb-3">Registrar turno</h5>
+
+        <form method="post">
+          <div class="mb-3">
+            <label class="form-label">Instalación</label>
+            <select class="form-select" name="instalacion_id" required>
+              {% for i in instalaciones %}
+                <option value="{{ i.id }}">{{ i.nombre }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Fecha del turno (fecha de inicio)</label>
+            <input class="form-control" type="date" name="fecha" required>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Tipo de turno</label>
+            <select class="form-select" name="turno_codigo" required>
+              <option value="DIA">Día (08:00–20:00)</option>
+              <option value="NOCHE">Noche (20:00–08:00)</option>
+            </select>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Guardia (RUT)</label>
+            <input class="form-control" name="guardia_rut" list="guardiasList" placeholder="Ej: 12.345.678-9" required>
+            <datalist id="guardiasList"></datalist>
+            <div class="form-text">Tip: escribe apellido o RUT; el listado se llena automáticamente.</div>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Observación</label>
+            <input class="form-control" name="observacion" maxlength="250">
+          </div>
+
+          <button class="btn btn-success" type="submit">Guardar turno</button>
+        </form>
+
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-6">
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <h6 class="mb-2">Reglas aplicadas</h6>
+        <ul class="mb-0">
+          <li>JC: adicional si cae en sábado/domingo o feriado (según minutos).</li>
+          <li>PT: adicional si cae en lunes–viernes o feriado (según minutos).</li>
+          <li>EXT: todo es adicional.</li>
+          <li>Feriado: recargo por minutos intersectados con 00:00–24:00 del feriado.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+async function cargarGuardias(q) {
+  const res = await fetch(`/api/guardias?q=${encodeURIComponent(q)}`);
+  const data = await res.json();
+  const dl = document.getElementById("guardiasList");
+  dl.innerHTML = "";
+  data.forEach(item => {
+    const opt = document.createElement("option");
+    opt.value = item.rut;
+    opt.label = item.label;
+    dl.appendChild(opt);
+  });
+}
+
+const input = document.querySelector('input[name="guardia_rut"]');
+input.addEventListener("input", (e) => {
+  const q = e.target.value.trim();
+  if (q.length >= 2) cargarGuardias(q);
+});
+</script>
+{% endblock %}

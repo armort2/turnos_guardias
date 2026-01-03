@@ -1,0 +1,507 @@
+/* =========================================================
+   Sistema Control de Turnos Guardias - styles.css
+   Enfoque: limpio, consistente, legible, "enterprise"
+   Compatible con Bootstrap (no lo reemplaza, lo mejora)
+   Paleta: Grupo CS (burdeo + naranja/ámbar + carbón)
+   ========================================================= */
+
+/* -------------------------
+   Variables / base theme
+-------------------------- */
+:root{
+  /* Base */
+  --bg: #0b1220;
+  --surface: rgba(255,255,255,0.06);
+  --surface-2: rgba(255,255,255,0.09);
+  --text: rgba(255,255,255,0.92);
+  --muted: rgba(255,255,255,0.70);
+  --border: rgba(255,255,255,0.12);
+
+  /* Marca Grupo CS */
+  --cs-burgundy: #6f1d1b;
+  --cs-burgundy-2: #4e1413;
+  --cs-amber: #d9741c;
+  --cs-amber-2: #b85f12;
+  --cs-coal: #121416;
+
+  /* Semánticos */
+  --primary: var(--cs-amber);
+  --primary-2: var(--cs-amber-2);
+
+  --success: #24c37a;
+  --warning: #f0b44b;
+  --danger: #ff5b6e;
+  --info: #57d0ff;
+
+  /* Navbar */
+  --nav-bg: #0f141a;
+  --nav-border: rgba(255,255,255,0.10);
+  --nav-link: rgba(255,255,255,0.92);
+  --nav-hover-bg: rgba(255,255,255,0.08);
+  --nav-active-bg: rgba(217,116,28,0.16);
+  --nav-active-border: rgba(217,116,28,0.55);
+
+  /* Sombra / radios */
+  --shadow: 0 10px 30px rgba(0,0,0,0.35);
+  --shadow-soft: 0 6px 18px rgba(0,0,0,0.22);
+
+  --radius: 14px;
+  --radius-sm: 10px;
+  --radius-xs: 8px;
+
+  --font: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, "Helvetica Neue", Arial, "Noto Sans", "Liberation Sans", sans-serif;
+}
+
+@media (prefers-color-scheme: light){
+  :root{
+    --bg: #f6f7fb;
+    --surface: rgba(0,0,0,0.03);
+    --surface-2: rgba(0,0,0,0.06);
+    --text: rgba(0,0,0,0.88);
+    --muted: rgba(0,0,0,0.62);
+    --border: rgba(0,0,0,0.10);
+
+    /* Navbar en claro: igual legible */
+    --nav-bg: #111418;
+    --nav-border: rgba(255,255,255,0.10);
+    --nav-link: rgba(255,255,255,0.94);
+    --nav-hover-bg: rgba(255,255,255,0.10);
+    --nav-active-bg: rgba(217,116,28,0.18);
+    --nav-active-border: rgba(217,116,28,0.55);
+
+    --shadow: 0 10px 30px rgba(13, 21, 36, 0.12);
+    --shadow-soft: 0 6px 18px rgba(13, 21, 36, 0.10);
+  }
+}
+
+/* -------------------------
+   Global
+-------------------------- */
+html, body{ height: 100%; }
+
+body{
+  font-family: var(--font);
+  background:
+    radial-gradient(1200px 600px at 18% 0%, rgba(111,29,27,0.22), transparent 55%),
+    radial-gradient(900px 500px at 92% 8%, rgba(217,116,28,0.16), transparent 45%),
+    var(--bg);
+  color: var(--text);
+  letter-spacing: 0.1px;
+}
+
+a{ color: var(--primary); text-decoration: none; }
+a:hover{ color: var(--primary-2); }
+
+hr{ border-color: var(--border); opacity: 1; }
+.small, small{ color: var(--muted); }
+
+/* -------------------------
+   Layout helpers
+-------------------------- */
+.container, .container-fluid{
+  padding-top: 18px;
+  padding-bottom: 18px;
+}
+
+.page-title{
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.page-title h1, .page-title h2, .page-title h3, .page-title h4, .page-title h5{
+  margin: 0;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+}
+
+.page-subtitle{
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+
+/* -------------------------
+   Cards / Panels
+-------------------------- */
+.card{
+  background: linear-gradient(180deg, var(--surface-2), var(--surface));
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-soft);
+}
+
+.card-header{
+  background: transparent;
+  border-bottom: 1px solid var(--border);
+  padding: 14px 16px;
+  font-weight: 650;
+}
+
+.card-body{ padding: 16px; }
+
+.panel{
+  background: linear-gradient(180deg, var(--surface-2), var(--surface));
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  box-shadow: var(--shadow-soft);
+}
+
+/* -------------------------
+   Buttons
+-------------------------- */
+.btn{
+  border-radius: var(--radius-xs);
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  box-shadow: none;
+  transition: transform .06s ease, filter .15s ease, box-shadow .15s ease;
+}
+
+.btn:hover{
+  filter: brightness(1.05);
+  box-shadow: 0 10px 22px rgba(0,0,0,0.18);
+}
+
+.btn:active{ transform: translateY(1px); }
+
+.btn-primary{
+  background: linear-gradient(180deg, var(--primary), var(--primary-2));
+  border-color: rgba(217,116,28,0.55);
+  color: #111;
+}
+.btn-primary:hover{ color: #111; }
+
+.btn-success{
+  background: linear-gradient(180deg, rgba(36,195,122,0.95), rgba(18,148,88,0.95));
+  border-color: rgba(36,195,122,0.55);
+}
+
+/* -------------------------
+   Forms
+-------------------------- */
+.form-control, .form-select{
+  background-color: rgba(255,255,255,0.06);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: var(--radius-xs);
+}
+
+.form-control::placeholder{ color: rgba(255,255,255,0.50); }
+@media (prefers-color-scheme: light){
+  .form-control::placeholder{ color: rgba(0,0,0,0.45); }
+}
+
+.form-control:focus, .form-select:focus{
+  border-color: rgba(217,116,28,0.70);
+  box-shadow: 0 0 0 0.20rem rgba(217,116,28,0.18);
+  background-color: rgba(255,255,255,0.08);
+  color: var(--text);
+}
+
+.form-control-sm{
+  padding-top: .35rem;
+  padding-bottom: .35rem;
+  border-radius: var(--radius-xs);
+}
+
+/* -------------------------
+   Tables
+-------------------------- */
+.table{ color: var(--text); }
+
+.table thead th{
+  border-bottom: 1px solid var(--border);
+  color: var(--muted);
+  font-weight: 700;
+  text-transform: uppercase;
+  font-size: 0.78rem;
+  letter-spacing: .8px;
+}
+
+.table tbody tr{ border-color: var(--border); }
+.table tbody tr:hover{ background: rgba(217,116,28,0.08); }
+.table td, .table th{ vertical-align: middle; border-color: var(--border); }
+
+.table-wrap{
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: rgba(255,255,255,0.03);
+}
+
+/* -------------------------
+   Badges
+-------------------------- */
+.badge{
+  border-radius: 999px;
+  padding: .40rem .60rem;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+}
+
+.badge-soft{
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  color: var(--text);
+}
+
+.badge-success{ background: rgba(36,195,122,0.18); border: 1px solid rgba(36,195,122,0.35); color: var(--text); }
+.badge-warning{ background: rgba(240,180,75,0.18); border: 1px solid rgba(240,180,75,0.35); color: var(--text); }
+.badge-danger{  background: rgba(255,91,110,0.18); border: 1px solid rgba(255,91,110,0.35); color: var(--text); }
+.badge-info{    background: rgba(87,208,255,0.18); border: 1px solid rgba(87,208,255,0.35); color: var(--text); }
+
+/* -------------------------
+   Alerts
+-------------------------- */
+.alert{
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: var(--shadow-soft);
+}
+
+.alert-success{ border-color: rgba(36,195,122,0.35); }
+.alert-warning{ border-color: rgba(240,180,75,0.35); }
+.alert-danger{  border-color: rgba(255,91,110,0.35); }
+.alert-info{    border-color: rgba(87,208,255,0.35); }
+
+/* -------------------------
+   Navbar
+-------------------------- */
+.navbar{
+  border-bottom: 1px solid var(--nav-border);
+  background: var(--nav-bg) !important;
+  backdrop-filter: none;
+}
+
+.navbar .navbar-brand{
+  font-weight: 850;
+  letter-spacing: 0.3px;
+  color: #fff !important;
+}
+
+.navbar .navbar-brand .badge-soft{
+  background: rgba(255,255,255,0.10);
+  border: 1px solid rgba(255,255,255,0.14);
+  color: rgba(255,255,255,0.90);
+}
+
+.navbar .nav-link{
+  color: var(--nav-link) !important;
+  opacity: 1;
+  padding: .55rem .70rem;
+  border-radius: 10px;
+  transition: background .12s ease, color .12s ease, transform .06s ease;
+}
+
+.navbar .nav-link:hover{
+  background: var(--nav-hover-bg);
+  color: #fff !important;
+}
+
+.navbar .nav-link.active,
+.navbar .nav-link[aria-current="page"]{
+  background: var(--nav-active-bg);
+  border: 1px solid var(--nav-active-border);
+  color: #fff !important;
+}
+
+.navbar .navbar-toggler{
+  border-color: rgba(255,255,255,0.22);
+}
+.navbar .navbar-toggler:focus{
+  box-shadow: 0 0 0 0.20rem rgba(217,116,28,0.20);
+}
+
+/* -------------------------
+   Navbar: bloque sesión (FIX contraste)
+   (Más específico para ganarle a Bootstrap)
+-------------------------- */
+.navbar .navbar-session{
+  padding-left: 12px;
+  margin-left: 8px;
+  border-left: 1px solid rgba(255,255,255,0.12);
+}
+
+.navbar .navbar-session .session-user{
+  color: rgba(255,255,255,0.92) !important;
+  font-size: 0.85rem;
+  letter-spacing: 0.2px;
+}
+
+/* Botón Cerrar sesión: garantizado visible */
+.navbar .navbar-session .btn-logout{
+  background: rgba(255,255,255,0.18) !important;
+  border: 1px solid rgba(255,255,255,0.45) !important;
+  color: #ffffff !important;
+  font-weight: 700;
+  box-shadow: 0 2px 0 rgba(0,0,0,0.25);
+}
+
+.navbar .navbar-session .btn-logout:hover{
+  background: linear-gradient(180deg, rgba(217,116,28,0.98), rgba(184,95,18,0.98)) !important;
+  border-color: rgba(217,116,28,1) !important;
+  color: #111 !important;
+}
+
+/* -------------------------
+   Utility
+-------------------------- */
+.section-title{ font-weight: 800; margin-bottom: 8px; }
+
+.divider{
+  height: 1px;
+  background: var(--border);
+  margin: 12px 0;
+}
+
+/* -------------------------
+   Footer
+-------------------------- */
+.app-footer{
+  color: var(--muted);
+  font-size: .9rem;
+  padding: 14px 0 6px;
+  border-top: 1px solid var(--border);
+  margin-top: 18px;
+}
+
+/* -------------------------
+   Accesibilidad
+-------------------------- */
+:focus-visible{
+  outline: 2px solid rgba(217,116,28,0.70);
+  outline-offset: 2px;
+  border-radius: 8px;
+}
+
+/* =========================================================
+   FIX: Texto usuario en navbar (evitar que quede negro)
+   ========================================================= */
+
+.navbar .navbar-session .session-user{
+  color: rgba(255,255,255,0.92) !important;
+  opacity: 1 !important;
+  text-shadow: 0 1px 0 rgba(0,0,0,0.35); /* mejora legibilidad en fondos oscuros */
+}
+
+/* Extra: badge del rol (ADMIN) un poquito más legible */
+.navbar .navbar-session .badge.badge-soft{
+  background: rgba(255,255,255,0.14) !important;
+  border-color: rgba(255,255,255,0.22) !important;
+  color: rgba(255,255,255,0.92) !important;
+}
+
+/* =========================================================
+   FIX: Botones secundarios con bajo contraste
+   (Acciones rápidas / fondos claros)
+   ========================================================= */
+
+/* Botones outline en cards claras */
+.card .btn-outline-light,
+.card .btn-outline-secondary{
+  background: rgba(255,255,255,0.65);
+  color: #111 !important;                 /* texto oscuro */
+  border: 1px solid rgba(0,0,0,0.18);
+  font-weight: 600;
+}
+
+/* Hover: sutil pero claro */
+.card .btn-outline-light:hover,
+.card .btn-outline-secondary:hover{
+  background: rgba(217,116,28,0.12);      /* ámbar muy suave */
+  border-color: rgba(217,116,28,0.55);
+  color: #111 !important;
+}
+
+/* Focus accesible */
+.card .btn-outline-light:focus-visible,
+.card .btn-outline-secondary:focus-visible{
+  outline: 2px solid rgba(217,116,28,0.6);
+  outline-offset: 2px;
+}
+
+/* Botones realmente deshabilitados */
+.card .btn:disabled,
+.card .btn.disabled{
+  background: rgba(0,0,0,0.05) !important;
+  color: rgba(0,0,0,0.35) !important;
+  border-color: rgba(0,0,0,0.10) !important;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+/* =========================================================
+   Navbar chips (botones tipo "Acciones rápidas")
+   ========================================================= */
+
+.navbar .navbar-actions{
+  gap: 10px;
+}
+
+.navbar .navbar-actions .nav-item{
+  display: flex;
+  align-items: center;
+}
+
+.navbar .navbar-actions .nav-chip{
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: .45rem .75rem !important;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.16);
+  background: rgba(255,255,255,0.08);
+  color: rgba(255,255,255,0.92) !important;
+  font-weight: 650;
+  line-height: 1.1;
+}
+
+.navbar .navbar-actions .nav-chip:hover{
+  background: rgba(255,255,255,0.12);
+  border-color: rgba(255,255,255,0.22);
+  color: #fff !important;
+}
+
+/* Activo */
+.navbar .navbar-actions .nav-chip.active{
+  background: rgba(217,116,28,0.18);
+  border-color: rgba(217,116,28,0.55);
+  color: #fff !important;
+}
+
+/* Variantes sutiles para Reporte/Admin */
+.navbar .navbar-actions .nav-chip-report{
+  background: rgba(87,208,255,0.10);
+  border-color: rgba(87,208,255,0.22);
+}
+
+.navbar .navbar-actions .nav-chip-admin{
+  background: rgba(240,180,75,0.12);
+  border-color: rgba(240,180,75,0.24);
+}
+
+/* Íconos alineados */
+.navbar .navbar-actions .nav-chip i.bi{
+  font-size: 1rem;
+  vertical-align: -0.1em;
+  opacity: 0.95;
+}
+
+/* Mobile: que no queden apretados */
+@media (max-width: 991.98px){
+  .navbar .navbar-actions{
+    padding-top: 10px;
+  }
+  .navbar .navbar-actions .nav-chip{
+    width: 100%;
+    justify-content: flex-start;
+  }
+}
+
+/* =========================================================
+   FIN styles.css
+   ========================================================= */

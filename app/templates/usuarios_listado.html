@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+  <div>
+    <h5 class="mb-0">Gestión de Usuarios</h5>
+    <div class="text-muted small">Acceso restringido a ADMIN</div>
+  </div>
+
+  <div class="d-flex gap-2 align-items-center flex-wrap">
+    <form class="d-flex gap-2" method="get" action="{{ url_for('usuarios.usuarios_listado') }}">
+      <input class="form-control form-control-sm" type="text" name="q" placeholder="Buscar por usuario o rol"
+             value="{{ q or '' }}" style="min-width: 240px;">
+      <button class="btn btn-sm btn-outline-secondary" type="submit">Buscar</button>
+      <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('usuarios.usuarios_listado') }}">Limpiar</a>
+    </form>
+
+    <a class="btn btn-sm btn-success" href="{{ url_for('usuarios.usuarios_nuevo') }}">+ Crear Usuario</a>
+  </div>
+</div>
+
+<div class="card shadow-sm">
+  <div class="card-body">
+
+    {% if not usuarios %}
+      <div class="alert alert-info mb-0">No hay usuarios para mostrar.</div>
+    {% else %}
+
+    <div class="table-responsive">
+      <table class="table table-sm align-middle mb-0">
+        <thead>
+          <tr>
+            <th style="width:70px;">ID</th>
+            <th>Usuario</th>
+            <th>Nombre completo</th>
+            <th style="width:140px;">RUT</th>
+            <th>Correo</th>
+            <th style="width:120px;">Rol</th>
+            <th style="width:110px;">Estado</th>
+            <th>Obras asignadas</th>
+            <th style="width:160px;">Último acceso</th>
+            <th class="text-end" style="width:120px;">Acciones</th>
+          </tr>
+        </thead>
+
+        <tbody>
+          {% for u in usuarios %}
+          <tr>
+            <td class="text-muted">{{ u.id }}</td>
+
+            <td>
+              <div class="fw-bold">{{ u.username }}</div>
+              <div class="text-muted small">
+                Creado: {{ u.creado_en.strftime("%d-%m-%Y %H:%M") if u.creado_en else "-" }}
+              </div>
+            </td>
+
+            <td>
+              <div class="fw-semibold">
+                {% if u.nombre_completo is defined and u.nombre_completo %}
+                  {{ u.nombre_completo }}
+                {% else %}
+                  <span class="text-muted">-</span>
+                {% endif %}
+              </div>
+            </td>
+
+            <td>
+              {% if u.rut is defined and u.rut %}
+                {{ u.rut }}
+              {% else %}
+                <span class="text-muted">-</span>
+              {% endif %}
+            </td>
+
+            <td>
+              {% if u.email is defined and u.email %}
+                {{ u.email }}
+              {% else %}
+                <span class="text-muted">-</span>
+              {% endif %}
+            </td>
+
+            <td>
+              <span class="badge badge-soft">{{ (u.rol or "").upper() }}</span>
+            </td>
+
+            <td>
+              {% if u.activo %}
+                <span class="badge badge-success">Activo</span>
+              {% else %}
+                <span class="badge badge-soft">Inactivo</span>
+              {% endif %}
+            </td>
+
+            <td>
+              {% if u.es_admin() %}
+                <span class="text-muted small">Sin límite (ADMIN)</span>
+              {% else %}
+                {% set insts = (u.instalaciones or []) %}
+                {% if insts|length == 0 %}
+                  <span class="text-muted small">Sin obras asignadas</span>
+                {% else %}
+                  <span class="text-muted small">
+                    {{ insts|map(attribute='nombre')|list|join(", ") }}
+                  </span>
+                {% endif %}
+              {% endif %}
+            </td>
+
+            <td>
+              {% if u.ultimo_acceso is defined and u.ultimo_acceso %}
+                <span class="small">
+                  {{ u.ultimo_acceso.strftime("%d-%m-%Y %H:%M") if u.ultimo_acceso.strftime is defined else u.ultimo_acceso }}
+                </span>
+              {% else %}
+                <span class="text-muted small">Nunca</span>
+              {% endif %}
+            </td>
+
+            <td class="text-end">
+              <a class="btn btn-sm btn-outline-light border"
+                 href="{{ url_for('usuarios.usuarios_editar', user_id=u.id) }}">
+                Editar
+              </a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    {% endif %}
+
+  </div>
+</div>
+
+{% endblock %}

@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card shadow-sm">
+  <div class="card-body">
+    <h5 class="mb-3">Configuración de recargos por feriado</h5>
+    <p class="text-muted mb-3">
+      Define el porcentaje de recargo para cada tipo de feriado.
+    </p>
+
+    <form method="post">
+      <div class="table-responsive">
+        <table class="table table-sm align-middle">
+          <thead>
+            <tr>
+              <th>Tipo de feriado</th>
+              <th style="width:220px;">% Recargo</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for r in data %}
+            <tr>
+              <td><b>{{ r.tipo }}</b></td>
+              <td>
+                <input class="form-control form-control-sm"
+                       type="number" min="0" max="300"
+                       name="pct_{{ r.tipo }}" value="{{ r.pct }}">
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <button class="btn btn-primary">Guardar</button>
+      <a class="btn btn-outline-secondary ms-2" href="/feriados">Ir a feriados</a>
+    </form>
+  </div>
+</div>
+{% endblock %}

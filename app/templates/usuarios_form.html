@@ -1,0 +1,168 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+  <h3 class="mb-0">
+    {% if modo == "nuevo" %}Crear Usuario{% else %}Editar Usuario{% endif %}
+  </h3>
+  <a class="btn btn-outline-secondary" href="{{ url_for('usuarios.usuarios_listado') }}">Volver</a>
+</div>
+
+<form method="post" class="card p-3 shadow-sm">
+
+  <div class="row g-3">
+    <!-- Username -->
+    <div class="col-12 col-md-6">
+      <label class="form-label">Username (inicio de sesión)</label>
+      <input class="form-control" name="username" value="{{ u.username if u else '' }}"
+             {% if modo != "nuevo" %}readonly{% endif %} required>
+      {% if modo != "nuevo" %}
+        <div class="form-text">
+          Para mantener trazabilidad, el username no se edita. Si necesitas cambiarlo, crea un usuario nuevo.
+        </div>
+      {% endif %}
+    </div>
+
+    <!-- Correo -->
+    <div class="col-12 col-md-6">
+      <label class="form-label">Correo electrónico</label>
+      <input class="form-control" type="email" name="email"
+             value="{{ u.email if u and u.email is defined else '' }}"
+             placeholder="nombre@empresa.cl" required>
+      <div class="form-text">
+        Se usa para contacto y futuras notificaciones/recuperación.
+      </div>
+    </div>
+
+    <!-- Nombre completo -->
+    <div class="col-12 col-md-8">
+      <label class="form-label">Nombre completo</label>
+      <input class="form-control" name="nombre_completo"
+             value="{{ u.nombre_completo if u and u.nombre_completo is defined else '' }}"
+             placeholder="Ej: Juan Pablo Pérez Soto" required>
+    </div>
+
+    <!-- RUT -->
+    <div class="col-12 col-md-4">
+      <label class="form-label">RUT</label>
+      <input class="form-control" name="rut"
+             value="{{ u.rut if u and u.rut is defined else '' }}"
+             placeholder="12.345.678-9" required>
+      <div class="form-text">
+        Formato sugerido: 12.345.678-9 (con puntos y guion). El sistema puede normalizar internamente.
+      </div>
+    </div>
+  </div>
+
+  <hr class="my-3">
+
+  <div class="row g-3">
+    <div class="col-12 col-md-6">
+      <label class="form-label">Rol</label>
+      <select class="form-select" name="rol" id="rol" required>
+        {% set current = (u.rol if u else 'REVISOR')|upper %}
+        <option value="ADMIN" {{ 'selected' if current=='ADMIN' else '' }}>ADMIN</option>
+        <option value="OPERADOR" {{ 'selected' if current=='OPERADOR' else '' }}>OPERADOR</option>
+        <option value="REVISOR" {{ 'selected' if current=='REVISOR' else '' }}>REVISOR</option>
+      </select>
+      <div class="form-text">
+        ADMIN ve todas las obras. OPERADOR/REVISOR solo las asignadas.
+      </div>
+    </div>
+
+    <!-- Último acceso (solo lectura) -->
+    <div class="col-12 col-md-6">
+      <label class="form-label">Último acceso</label>
+      <input class="form-control" value="{% if u and u.ultimo_acceso is defined and u.ultimo_acceso %}{{ u.ultimo_acceso }}{% else %}Nunca{% endif %}" readonly>
+      <div class="form-text">Dato informativo (auditoría). No es editable.</div>
+    </div>
+  </div>
+
+  <!-- Obras asignadas (solo aplica a no-ADMIN) -->
+  <div class="mb-3 mt-3" id="boxObras">
+    <label class="form-label">Obras asignadas</label>
+    <select class="form-select" name="instalaciones" multiple size="10">
+      {% for inst in (instalaciones or []) %}
+        <option value="{{ inst.id }}"
+          {% if asignadas_ids and inst.id in asignadas_ids %}selected{% endif %}>
+          {{ inst.nombre }}
+        </option>
+      {% endfor %}
+    </select>
+    <div class="form-text">Tip: Ctrl (Windows) / Cmd (Mac) para seleccionar múltiples.</div>
+  </div>
+
+  <hr class="my-3">
+
+  <div class="mb-3">
+    <div class="form-check">
+      <input class="form-check-input" type="checkbox" name="activo" id="activo"
+             {% if u and u.activo %}checked{% elif modo=='nuevo' %}checked{% endif %}>
+      <label class="form-check-label" for="activo">Activo</label>
+    </div>
+  </div>
+
+  <div class="mb-3">
+    <div class="form-check">
+      <input class="form-check-input" type="checkbox" name="debe_cambiar_password" id="debe_cambiar_password"
+             {% if u and u.debe_cambiar_password %}checked{% elif modo=='nuevo' %}checked{% endif %}>
+      <label class="form-check-label" for="debe_cambiar_password">Debe cambiar contraseña al primer ingreso</label>
+    </div>
+  </div>
+
+  {% if modo == "nuevo" %}
+    <div class="mb-3">
+      <label class="form-label">Contraseña inicial</label>
+      <input class="form-control" type="password" name="password" required>
+      <div class="form-text">Recomendado: entregar una contraseña inicial y obligar cambio en el primer ingreso.</div>
+    </div>
+  {% else %}
+    <div class="alert alert-warning">
+      <b>Reset de contraseña</b>
+      <div class="small">
+        Si completas estos campos, se actualizará la contraseña y el usuario quedará obligado a cambiarla en el próximo ingreso.
+        Si los dejas vacíos, no se modifica la contraseña.
+      </div>
+    </div>
+
+    <div class="row g-2 mb-3">
+      <div class="col-12 col-md-6">
+        <label class="form-label">Nueva contraseña</label>
+        <input class="form-control" type="password" name="new_password" minlength="6" placeholder="Mínimo 6 caracteres">
+      </div>
+      <div class="col-12 col-md-6">
+        <label class="form-label">Repetir nueva contraseña</label>
+        <input class="form-control" type="password" name="new_password2" minlength="6" placeholder="Repite la contraseña">
+      </div>
+      <div class="col-12">
+        <div class="form-text">
+          Consejo corporativo: no uses “123456”, ni “password”, ni el nombre del perro. Los auditores no tienen sentido del humor.
+        </div>
+      </div>
+    </div>
+  {% endif %}
+
+  <button class="btn btn-primary">
+    {% if modo == "nuevo" %}Crear{% else %}Guardar cambios{% endif %}
+  </button>
+
+</form>
+
+<script>
+  (function () {
+    const selRol = document.getElementById("rol");
+    const boxObras = document.getElementById("boxObras");
+
+    function refresh() {
+      const rol = (selRol.value || "").toUpperCase();
+      boxObras.style.display = (rol === "ADMIN") ? "none" : "block";
+    }
+
+    if (selRol && boxObras) {
+      selRol.addEventListener("change", refresh);
+      refresh();
+    }
+  })();
+</script>
+
+{% endblock %}

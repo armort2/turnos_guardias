@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h5 class="mb-0">Guardias</h5>
+  <a class="btn btn-primary" href="/guardias/nuevo">+ Nuevo guardia</a>
+</div>
+
+<div class="card shadow-sm">
+  <div class="card-body">
+    <form class="row g-2 mb-3" method="get" action="/guardias">
+      <div class="col-md-10">
+        <input class="form-control" name="q" value="{{ q }}" placeholder="Buscar por RUT, nombre, empleador, obra…">
+      </div>
+      <div class="col-md-2">
+        <button class="btn btn-outline-secondary w-100" type="submit">Buscar</button>
+      </div>
+    </form>
+
+    <div class="table-responsive">
+      <table class="table table-sm align-middle">
+        <thead>
+          <tr>
+            <th>RUT</th>
+            <th>Nombre</th>
+            <th>Modalidad</th>
+            <th>Empleador</th>
+            <th>Obra</th>
+            <th>Activo</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for g in guardias %}
+          <tr class="{% if not g.activo %}table-secondary{% endif %}">
+            <td>{{ g.rut }}</td>
+            <td>{{ g.ap_paterno }} {{ g.ap_materno or '' }} {{ g.nombres }}</td>
+            <td>{{ g.modalidad }}</td>
+            <td>{{ g.empleador }}</td>
+            <td>{{ g.obra_base }}</td>
+            <td>{{ "Sí" if g.activo else "No" }}</td>
+            <td>
+              <a class="btn btn-sm btn-outline-primary" href="/guardias/{{ g.rut }}/editar">Editar</a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="text-muted small">
+      Mostrando hasta 200 resultados.
+    </div>
+  </div>
+</div>
+{% endblock %}

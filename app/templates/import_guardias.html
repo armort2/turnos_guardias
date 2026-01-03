@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card shadow-sm">
+  <div class="card-body">
+    <h5 class="card-title mb-3">Importar guardias desde Excel (.xlsx)</h5>
+    <p class="text-muted">
+      Columnas esperadas: RUT, Ap. Paterno, Ap. Materno, Nombres, Labor a realizar, Nombre Obra, Nombre Empleador.
+    </p>
+    <form method="post" enctype="multipart/form-data">
+      <div class="mb-3">
+        <input class="form-control" type="file" name="file" accept=".xlsx" required>
+      </div>
+      <button class="btn btn-primary" type="submit">Importar</button>
+    </form>
+  </div>
+</div>
+{% endblock %}
