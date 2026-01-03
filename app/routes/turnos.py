@@ -1,14 +1,7 @@
 from collections import defaultdict
 from datetime import date, datetime, time, timedelta
 
-from flask import (
-    flash,
-    jsonify,
-    redirect,
-    render_template,
-    request,
-    url_for,
-)
+from flask import flash, jsonify, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
 from sqlalchemy import case, func
 from sqlalchemy.orm import selectinload
@@ -357,21 +350,61 @@ def nuevo_turno():
 @main.get("/turnos")
 @login_required
 def turnos_listado():
+    # -----------------------------------------------------------------
+    # Scope por instalación (permisos)
+    # -----------------------------------------------------------------
     if current_user.es_admin():
-        inst_ids = None
+        inst_ids_scope = None
+        instalaciones_filtro = Instalacion.query.order_by(
+            Instalacion.nombre.asc()
+        ).all()
     else:
-        inst_ids = [i.id for i in (current_user.instalaciones or [])]
-        if not inst_ids:
+        inst_ids_scope = [i.id for i in (current_user.instalaciones or [])]
+        if not inst_ids_scope:
             return render_template(
-                "turnos_listado.html", dias=[], guardias_map={}, instalaciones_map={}
+                "turnos_listado.html",
+                dias=[],
+                guardias_map={},
+                instalaciones_map={},
+                instalaciones_filtro=[],
+                inst_id_sel=[],
+            )
+        instalaciones_filtro = (
+            Instalacion.query.filter(Instalacion.id.in_(inst_ids_scope))
+            .order_by(Instalacion.nombre.asc())
+            .all()
+        )
+
+    # -----------------------------------------------------------------
+    # Filtro por obra (multi-select): ?inst_id=1&inst_id=2...
+    # -----------------------------------------------------------------
+    inst_id_sel = request.args.getlist("inst_id", type=int)
+    if inst_id_sel:
+        if inst_ids_scope is not None:
+            inst_id_sel = [i for i in inst_id_sel if i in inst_ids_scope]
+        # si el usuario envió ids fuera de su scope, quedan descartados
+        if not inst_id_sel:
+            return render_template(
+                "turnos_listado.html",
+                dias=[],
+                guardias_map={},
+                instalaciones_map={},
+                instalaciones_filtro=instalaciones_filtro,
+                inst_id_sel=[],
             )
 
+    # -----------------------------------------------------------------
+    # Query base
+    # -----------------------------------------------------------------
     q = TurnoRegistro.query.options(
         selectinload(TurnoRegistro.comentarios).selectinload(TurnoComentario.autor)
     ).filter(TurnoRegistro.anulado.is_(False))
 
-    if inst_ids is not None:
-        q = q.filter(TurnoRegistro.instalacion_id.in_(inst_ids))
+    if inst_ids_scope is not None:
+        q = q.filter(TurnoRegistro.instalacion_id.in_(inst_ids_scope))
+
+    if inst_id_sel:
+        q = q.filter(TurnoRegistro.instalacion_id.in_(inst_id_sel))
 
     turnos = (
         q.order_by(TurnoRegistro.inicio_dt.asc(), TurnoRegistro.id.asc())
@@ -423,6 +456,8 @@ def turnos_listado():
         dias=dias,
         guardias_map=guardias_map,
         instalaciones_map=instalaciones_map,
+        instalaciones_filtro=instalaciones_filtro,
+        inst_id_sel=inst_id_sel,
     )
 
 

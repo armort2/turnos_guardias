@@ -29,6 +29,40 @@
   </div>
 </div>
 
+<!-- ✅ Filtro por obra (multi) -->
+<div class="card shadow-sm mb-3">
+  <div class="card-body">
+    <form method="get" action="/turnos" class="row g-2 align-items-end">
+      <div class="col-12 col-lg-8">
+        <label class="form-label small mb-1">Filtrar por obra(s)</label>
+        <select class="form-select" name="inst_id" multiple size="6">
+          {% for inst in (instalaciones_filtro or []) %}
+            <option value="{{ inst.id }}"
+              {% if inst_id_sel and (inst.id in inst_id_sel) %}selected{% endif %}>
+              {{ inst.nombre }}
+            </option>
+          {% endfor %}
+        </select>
+        <div class="form-text">
+          Tip: mantén presionado Ctrl (Windows/Linux) o ⌘ (Mac) para seleccionar varias.
+          Si no seleccionas ninguna, se muestra todo tu scope.
+        </div>
+      </div>
+
+      <div class="col-12 col-lg-4">
+        <div class="d-flex gap-2">
+          <button class="btn btn-primary w-50" type="submit">
+            Aplicar
+          </button>
+          <a class="btn btn-outline-secondary w-50" href="/turnos">
+            Limpiar
+          </a>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
 {% if current_user.is_authenticated and (current_user.rol or "")|upper in ["ADMIN","OPERADOR"] %}
   <div class="collapse mb-3" id="ptRango">
     <div class="card border-0 shadow-sm">
@@ -154,7 +188,6 @@
             <td>{{ t.inicio_dt.strftime("%d-%m-%Y %H:%M") }}</td>
             <td>{{ t.fin_dt.strftime("%d-%m-%Y %H:%M") }}</td>
 
-            <!-- ✅ Alternativa premium: mostrar minutos feriado como "X h Y m" -->
             <td>
               {% set mins = (t.minutos_feriado or 0) %}
               {% set h = (mins // 60) %}
@@ -210,7 +243,6 @@
             </td>
           </tr>
 
-          <!-- Panel de comentarios por turno -->
           <tr class="collapse" id="cmt{{ t.id }}">
             <td colspan="10">
               <div class="p-2 border rounded bg-light">
