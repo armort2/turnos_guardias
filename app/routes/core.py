@@ -1,24 +1,14 @@
 import re
-from datetime import date
+from datetime import date, datetime, time
 from functools import wraps
 
 import pandas as pd
-from flask import (
-    abort,
-    flash,
-    redirect,
-    render_template,
-    request,
-    url_for,
-)
+from flask import abort, flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
+from sqlalchemy import func
 
 from .. import db
-from ..models import (
-    Feriado,
-    Guardia,
-    Instalacion,
-)
+from ..models import Feriado, Guardia, Instalacion, TurnoRegistro
 from . import main
 
 # -------------------------------------------------------------------
@@ -105,11 +95,48 @@ def exigir_acceso_instalacion(instalacion_id: int):
 
 @main.get("/")
 def index():
+    hoy = date.today()
+    inicio_mes = date(hoy.year, hoy.month, 1)
+    inicio_mes_dt = datetime.combine(inicio_mes, time(0, 0))
+
+    if hoy.month == 12:
+        inicio_sig_mes = date(hoy.year + 1, 1, 1)
+    else:
+        inicio_sig_mes = date(hoy.year, hoy.month + 1, 1)
+
+    inicio_sig_mes_dt = datetime.combine(inicio_sig_mes, time(0, 0))
+
+    turnos_no_anulados = TurnoRegistro.query.filter(
+        TurnoRegistro.anulado.is_(False)
+    ).count()
+
+    turnos_anulados = TurnoRegistro.query.filter(
+        TurnoRegistro.anulado.is_(True)
+    ).count()
+
+    turnos_mes = (
+        TurnoRegistro.query.filter(TurnoRegistro.anulado.is_(False))
+        .filter(TurnoRegistro.inicio_dt >= inicio_mes_dt)
+        .filter(TurnoRegistro.inicio_dt < inicio_sig_mes_dt)
+        .count()
+    )
+
+    ultimo_turno_dt = (
+        db.session.query(func.max(TurnoRegistro.inicio_dt))
+        .filter(TurnoRegistro.anulado.is_(False))
+        .scalar()
+    )
+
     stats = {
         "guardias": Guardia.query.count(),
         "instalaciones": Instalacion.query.count(),
+        "turnos": turnos_no_anulados,
+        "turnos_anulados": turnos_anulados,
+        "turnos_mes": turnos_mes,
+        "ultimo_turno_dt": ultimo_turno_dt,
         "feriados": Feriado.query.count(),
     }
+
     return render_template("index.html", stats=stats)
 
 

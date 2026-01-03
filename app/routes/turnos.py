@@ -103,8 +103,8 @@ def obtener_info_recargo_feriado(inicio_dt: datetime, fin_dt: datetime):
     partes = []
     for it in items:
         partes.append(
-            f'{it["fecha"].strftime("%Y-%m-%d")} {it["tipo"]} {it["pct"]}% '
-            f'({it["minutos"]} min) {it["descripcion"]}'.strip()
+            f"{it['fecha'].strftime('%Y-%m-%d')} {it['tipo']} {it['pct']}% "
+            f"({it['minutos']} min) {it['descripcion']}".strip()
         )
     detalle = " | ".join(partes)
     if len(detalle) > 500:

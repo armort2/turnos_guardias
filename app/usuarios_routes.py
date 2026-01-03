@@ -7,7 +7,7 @@ from sqlalchemy.orm import selectinload
 
 from . import db
 from .models import AuditLog, Instalacion, Usuario
-from .routes import role_required  # reutiliza tu decorator
+from .routes.core import role_required  # reutiliza tu decorator
 
 usuarios_bp = Blueprint("usuarios", __name__)
 

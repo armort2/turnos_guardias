@@ -51,7 +51,12 @@
             <td>
               <div class="fw-bold">{{ u.username }}</div>
               <div class="text-muted small">
-                Creado: {{ u.creado_en.strftime("%d-%m-%Y %H:%M") if u.creado_en else "-" }}
+                Creado:
+                {% if u.creado_en %}
+                  {{ u.creado_en|cl_datetime }}
+                {% else %}
+                  -
+                {% endif %}
               </div>
             </td>
 
@@ -109,10 +114,8 @@
             </td>
 
             <td>
-              {% if u.ultimo_acceso is defined and u.ultimo_acceso %}
-                <span class="small">
-                  {{ u.ultimo_acceso.strftime("%d-%m-%Y %H:%M") if u.ultimo_acceso.strftime is defined else u.ultimo_acceso }}
-                </span>
+              {% if u.ultimo_acceso %}
+                <span class="small">{{ u.ultimo_acceso|cl_datetime }}</span>
               {% else %}
                 <span class="text-muted small">Nunca</span>
               {% endif %}

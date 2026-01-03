@@ -96,7 +96,7 @@
         <div class="card-body">
           <div class="small text-muted">Turnos registrados</div>
           <div class="fs-3 fw-bold">{{ stats.turnos }}</div>
-          <div class="small text-muted">Histórico</div>
+          <div class="small text-muted">Histórico (no anulados)</div>
         </div>
       </div>
     </div>
@@ -107,6 +107,45 @@
           <div class="small text-muted">Feriados cargados</div>
           <div class="fs-3 fw-bold">{{ stats.feriados }}</div>
           <div class="small text-muted">Calendario</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- KPIs adicionales -->
+  <div class="row g-3 mb-3">
+    <div class="col-12 col-md-6 col-xl-4">
+      <div class="card h-100">
+        <div class="card-body">
+          <div class="small text-muted">Turnos del mes</div>
+          <div class="fs-3 fw-bold">{{ stats.turnos_mes }}</div>
+          <div class="small text-muted">No anulados (mes actual)</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-12 col-md-6 col-xl-4">
+      <div class="card h-100">
+        <div class="card-body">
+          <div class="small text-muted">Turnos anulados</div>
+          <div class="fs-3 fw-bold">{{ stats.turnos_anulados }}</div>
+          <div class="small text-muted">Histórico</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-12 col-md-12 col-xl-4">
+      <div class="card h-100">
+        <div class="card-body">
+          <div class="small text-muted">Último turno registrado</div>
+          <div class="fs-5 fw-bold">
+            {% if stats.ultimo_turno_dt %}
+              {{ stats.ultimo_turno_dt|cl_datetime }}
+            {% else %}
+              -
+            {% endif %}
+          </div>
+          <div class="small text-muted">Último inicio (no anulado)</div>
         </div>
       </div>
     </div>

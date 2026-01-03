@@ -46,7 +46,7 @@ class Usuario(UserMixin, db.Model):
     email = db.Column(
         db.String(160), unique=True, nullable=True
     )  # contacto/recuperación
-    ultimo_acceso = db.Column(db.DateTime, nullable=True)  # auditoría
+    ultimo_acceso = db.Column(db.DateTime(timezone=True), nullable=True)  # auditoría
 
     # Hash de contraseña (nunca guardar la contraseña en texto)
     password_hash = db.Column(db.String(255), nullable=False)

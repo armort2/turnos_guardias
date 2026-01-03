@@ -4,6 +4,7 @@ services:
     container_name: turnos_db
     restart: always
     environment:
+      TZ: America/Santiago
       POSTGRES_DB: turnos
       POSTGRES_USER: turnos_user
       POSTGRES_PASSWORD: turnos_pass
@@ -27,6 +28,7 @@ services:
     ports:
       - "5000:5000"
     environment:
+      TZ: America/Santiago
       DATABASE_URL: postgresql://turnos_user:turnos_pass@db:5432/turnos
       SECRET_KEY: cambia-esto-por-algo-serio
       FLASK_ENV: production

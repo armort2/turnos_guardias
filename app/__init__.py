@@ -1,3 +1,6 @@
+from datetime import UTC
+from zoneinfo import ZoneInfo
+
 from flask import Flask
 from flask_login import LoginManager
 from flask_migrate import Migrate
@@ -51,5 +54,16 @@ def create_app(config_class=Config):
     from .perfil_routes import perfil_bp  # noqa: E402
 
     app.register_blueprint(perfil_bp)
+
+    @app.template_filter("cl_datetime")
+    def cl_datetime(value, fmt="%d-%m-%Y %H:%M"):
+        if not value:
+            return "Nunca"
+
+        # Si viene naive (sin tzinfo), asumimos que es UTC (lo más probable en tu caso)
+        if getattr(value, "tzinfo", None) is None:
+            value = value.replace(tzinfo=UTC)
+
+        return value.astimezone(ZoneInfo("America/Santiago")).strftime(fmt)
 
     return app

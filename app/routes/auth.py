@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import UTC, datetime
 from urllib.parse import urlparse
 
 from flask import flash, redirect, render_template, request, url_for
@@ -85,7 +85,8 @@ def login():
         login_user(user, remember=remember)
 
         try:
-            user.ultimo_acceso = datetime.utcnow()
+            user.ultimo_acceso = datetime.now(UTC)
+
             db.session.commit()
         except Exception:
             db.session.rollback()
