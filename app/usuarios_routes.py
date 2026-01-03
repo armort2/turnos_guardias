@@ -80,7 +80,7 @@ def audit(accion: str, target_user_id=None, detalle: str = ""):
             accion=accion,
             detalle=(detalle or "")[:500],
             ip=(ip or "")[:60],
-            user_agent=ua
+            user_agent=ua,
         )
         db.session.add(log)
         db.session.commit()
@@ -124,14 +124,16 @@ def usuarios_nuevo():
             modo="nuevo",
             u=None,
             instalaciones=instalaciones,
-            asignadas_ids=set()
+            asignadas_ids=set(),
         )
 
     username = (request.form.get("username") or "").strip()
     rol = (request.form.get("rol") or "REVISOR").strip().upper()
     password = (request.form.get("password") or "").strip()
     activo = True if request.form.get("activo") == "on" else False
-    debe_cambiar_password = True if request.form.get("debe_cambiar_password") == "on" else False
+    debe_cambiar_password = (
+        True if request.form.get("debe_cambiar_password") == "on" else False
+    )
 
     # nuevos campos
     nombre_completo = (request.form.get("nombre_completo") or "").strip()
@@ -196,7 +198,11 @@ def usuarios_nuevo():
     db.session.add(u)
     db.session.commit()
 
-    audit("USER_CREATE", target_user_id=u.id, detalle=f"Creado usuario {u.username} ({u.rol})")
+    audit(
+        "USER_CREATE",
+        target_user_id=u.id,
+        detalle=f"Creado usuario {u.username} ({u.rol})",
+    )
 
     flash("Usuario creado correctamente.", "success")
     return redirect(url_for("usuarios.usuarios_listado"))
@@ -216,12 +222,14 @@ def usuarios_editar(user_id):
             modo="editar",
             u=u,
             instalaciones=instalaciones,
-            asignadas_ids=asignadas_ids
+            asignadas_ids=asignadas_ids,
         )
 
     rol = (request.form.get("rol") or "REVISOR").strip().upper()
     activo = True if request.form.get("activo") == "on" else False
-    debe_cambiar_password = True if request.form.get("debe_cambiar_password") == "on" else False
+    debe_cambiar_password = (
+        True if request.form.get("debe_cambiar_password") == "on" else False
+    )
 
     inst_ids = request.form.getlist("instalaciones")
     inst_ids = [int(x) for x in inst_ids if str(x).isdigit()]
@@ -257,18 +265,25 @@ def usuarios_editar(user_id):
         flash("Ese RUT ya está registrado en otro usuario.", "warning")
         return redirect(url_for("usuarios.usuarios_editar", user_id=u.id))
 
-    existe_email = Usuario.query.filter(Usuario.email == email, Usuario.id != u.id).first()
+    existe_email = Usuario.query.filter(
+        Usuario.email == email, Usuario.id != u.id
+    ).first()
     if existe_email:
         flash("Ese correo ya está registrado en otro usuario.", "warning")
         return redirect(url_for("usuarios.usuarios_editar", user_id=u.id))
 
     # Actualización base
     cambios = []
-    if u.rol != rol: cambios.append(f"rol: {u.rol} -> {rol}")
-    if u.activo != activo: cambios.append(f"activo: {u.activo} -> {activo}")
-    if (u.nombre_completo or "") != nombre_completo: cambios.append("nombre_completo actualizado")
-    if (u.rut or "") != rut: cambios.append("rut actualizado")
-    if (u.email or "") != email: cambios.append("email actualizado")
+    if u.rol != rol:
+        cambios.append(f"rol: {u.rol} -> {rol}")
+    if u.activo != activo:
+        cambios.append(f"activo: {u.activo} -> {activo}")
+    if (u.nombre_completo or "") != nombre_completo:
+        cambios.append("nombre_completo actualizado")
+    if (u.rut or "") != rut:
+        cambios.append("rut actualizado")
+    if (u.email or "") != email:
+        cambios.append("email actualizado")
 
     u.rol = rol
     u.activo = activo
@@ -288,8 +303,15 @@ def usuarios_editar(user_id):
 
         u.set_password(new_password)
         u.debe_cambiar_password = True
-        audit("USER_RESET_PW", target_user_id=u.id, detalle=f"Reset contraseña para {u.username}")
-        flash("Contraseña reseteada. El usuario deberá cambiarla en el próximo ingreso.", "success")
+        audit(
+            "USER_RESET_PW",
+            target_user_id=u.id,
+            detalle=f"Reset contraseña para {u.username}",
+        )
+        flash(
+            "Contraseña reseteada. El usuario deberá cambiarla en el próximo ingreso.",
+            "success",
+        )
     else:
         u.debe_cambiar_password = debe_cambiar_password
 
@@ -297,11 +319,19 @@ def usuarios_editar(user_id):
     if rol == "ADMIN":
         u.instalaciones = []
     else:
-        u.instalaciones = Instalacion.query.filter(Instalacion.id.in_(inst_ids)).all() if inst_ids else []
+        u.instalaciones = (
+            Instalacion.query.filter(Instalacion.id.in_(inst_ids)).all()
+            if inst_ids
+            else []
+        )
 
     db.session.commit()
 
-    audit("USER_UPDATE", target_user_id=u.id, detalle="; ".join(cambios) if cambios else "Sin cambios relevantes")
+    audit(
+        "USER_UPDATE",
+        target_user_id=u.id,
+        detalle="; ".join(cambios) if cambios else "Sin cambios relevantes",
+    )
 
     flash("Usuario actualizado correctamente.", "success")
     return redirect(url_for("usuarios.usuarios_listado"))

@@ -19,7 +19,12 @@ TURNO_CODIGO_ENUM = db.Enum("DIA", "NOCHE", name="turno_codigo")
 usuario_instalacion = db.Table(
     "usuarios_instalaciones",
     db.Column("usuario_id", db.Integer, db.ForeignKey("usuarios.id"), primary_key=True),
-    db.Column("instalacion_id", db.Integer, db.ForeignKey("instalaciones.id"), primary_key=True),
+    db.Column(
+        "instalacion_id",
+        db.Integer,
+        db.ForeignKey("instalaciones.id"),
+        primary_key=True,
+    ),
     db.Column("creado_en", db.DateTime, default=datetime.utcnow, nullable=False),
 )
 
@@ -36,10 +41,12 @@ class Usuario(UserMixin, db.Model):
     username = db.Column(db.String(120), unique=True, nullable=False)
 
     # Datos de perfil (para administración y auditoría)
-    rut = db.Column(db.String(20), unique=True, nullable=True)              # Ej: 12345678-9
-    nombre_completo = db.Column(db.String(160), nullable=True)              # Ej: Juan Pérez Soto
-    email = db.Column(db.String(160), unique=True, nullable=True)           # contacto/recuperación
-    ultimo_acceso = db.Column(db.DateTime, nullable=True)                   # auditoría
+    rut = db.Column(db.String(20), unique=True, nullable=True)  # Ej: 12345678-9
+    nombre_completo = db.Column(db.String(160), nullable=True)  # Ej: Juan Pérez Soto
+    email = db.Column(
+        db.String(160), unique=True, nullable=True
+    )  # contacto/recuperación
+    ultimo_acceso = db.Column(db.DateTime, nullable=True)  # auditoría
 
     # Hash de contraseña (nunca guardar la contraseña en texto)
     password_hash = db.Column(db.String(255), nullable=False)
@@ -87,10 +94,16 @@ class AuditLog(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
 
-    actor_id = db.Column(db.Integer, db.ForeignKey("usuarios.id"), nullable=True, index=True)
-    target_user_id = db.Column(db.Integer, db.ForeignKey("usuarios.id"), nullable=True, index=True)
+    actor_id = db.Column(
+        db.Integer, db.ForeignKey("usuarios.id"), nullable=True, index=True
+    )
+    target_user_id = db.Column(
+        db.Integer, db.ForeignKey("usuarios.id"), nullable=True, index=True
+    )
 
-    accion = db.Column(db.String(60), nullable=False)   # ej: USER_CREATE / USER_UPDATE / USER_RESET_PW
+    accion = db.Column(
+        db.String(60), nullable=False
+    )  # ej: USER_CREATE / USER_UPDATE / USER_RESET_PW
     detalle = db.Column(db.String(500), nullable=True)
 
     ip = db.Column(db.String(60), nullable=True)
@@ -99,7 +112,9 @@ class AuditLog(db.Model):
     creado_en = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
 
     actor = db.relationship("Usuario", foreign_keys=[actor_id], lazy="joined")
-    target_user = db.relationship("Usuario", foreign_keys=[target_user_id], lazy="joined")
+    target_user = db.relationship(
+        "Usuario", foreign_keys=[target_user_id], lazy="joined"
+    )
 
     def __repr__(self) -> str:
         return f"<AuditLog id={self.id} accion={self.accion} actor={self.actor_id} target={self.target_user_id}>"
@@ -125,7 +140,9 @@ class Guardia(db.Model):
     activo = db.Column(db.Boolean, nullable=False, default=True)
 
     def nombre_completo(self) -> str:
-        return f"{self.ap_paterno} {self.ap_materno or ''} {self.nombres}".replace("  ", " ").strip()
+        return f"{self.ap_paterno} {self.ap_materno or ''} {self.nombres}".replace(
+            "  ", " "
+        ).strip()
 
     def __repr__(self) -> str:
         return f"<Guardia rut={self.rut} nombre={self.nombre_completo()} modalidad={self.modalidad}>"
@@ -166,8 +183,12 @@ class TurnoRegistro(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
 
-    guardia_rut = db.Column(db.String(12), db.ForeignKey("guardias.rut"), nullable=False)
-    instalacion_id = db.Column(db.Integer, db.ForeignKey("instalaciones.id"), nullable=False)
+    guardia_rut = db.Column(
+        db.String(12), db.ForeignKey("guardias.rut"), nullable=False
+    )
+    instalacion_id = db.Column(
+        db.Integer, db.ForeignKey("instalaciones.id"), nullable=False
+    )
 
     comentarios = db.relationship(
         "TurnoComentario",
@@ -231,8 +252,12 @@ class TurnoComentario(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
 
-    turno_id = db.Column(db.Integer, db.ForeignKey("turnos_registro.id"), nullable=False, index=True)
-    autor_id = db.Column(db.Integer, db.ForeignKey("usuarios.id"), nullable=False, index=True)
+    turno_id = db.Column(
+        db.Integer, db.ForeignKey("turnos_registro.id"), nullable=False, index=True
+    )
+    autor_id = db.Column(
+        db.Integer, db.ForeignKey("usuarios.id"), nullable=False, index=True
+    )
 
     texto = db.Column(db.String(500), nullable=False)
     creado_en = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)

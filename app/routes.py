@@ -1,4 +1,13 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, abort
+from flask import (
+    Blueprint,
+    render_template,
+    request,
+    redirect,
+    url_for,
+    flash,
+    jsonify,
+    abort,
+)
 from datetime import datetime, timedelta, time, date
 import re
 from collections import defaultdict
@@ -12,9 +21,14 @@ from sqlalchemy import func, case
 
 from . import db
 from .models import (
-    Guardia, Instalacion, Feriado, TurnoRegistro,
-    ConfiguracionRecargo, TurnoComentario,
-    Usuario, AuditLog
+    Guardia,
+    Instalacion,
+    Feriado,
+    TurnoRegistro,
+    ConfiguracionRecargo,
+    TurnoComentario,
+    Usuario,
+    AuditLog,
 )
 
 main = Blueprint("main", __name__)
@@ -22,6 +36,7 @@ main = Blueprint("main", __name__)
 # -------------------------------------------------------------------
 # Auditoría de seguridad (login / logout)
 # -------------------------------------------------------------------
+
 
 def audit_login(accion: str, user_id=None, detalle: str = ""):
     """
@@ -37,16 +52,18 @@ def audit_login(accion: str, user_id=None, detalle: str = ""):
             accion=accion,
             detalle=(detalle or "")[:500],
             ip=(ip or "")[:60],
-            user_agent=ua
+            user_agent=ua,
         )
         db.session.add(log)
         db.session.commit()
     except Exception:
         db.session.rollback()
 
+
 # -------------------------------------------------------------------
 # Helpers generales
 # -------------------------------------------------------------------
+
 
 def normalizar_rut(rut: str) -> str:
     """
@@ -79,7 +96,9 @@ def nombre_dia_es(fecha: date) -> str:
     return dias.get(fecha.weekday(), "")
 
 
-def minutos_solapados(a_ini: datetime, a_fin: datetime, b_ini: datetime, b_fin: datetime) -> int:
+def minutos_solapados(
+    a_ini: datetime, a_fin: datetime, b_ini: datetime, b_fin: datetime
+) -> int:
     """
     Calcula minutos de solape entre intervalos [a_ini, a_fin) y [b_ini, b_fin).
     """
@@ -126,15 +145,19 @@ def obtener_info_recargo_feriado(inicio_dt: datetime, fin_dt: datetime):
             mins = minutos_solapados(inicio_dt, fin_dt, win_ini, win_fin)
             if mins > 0:
                 minutos_total += mins
-                cfg = ConfiguracionRecargo.query.filter_by(tipo_feriado=fer.tipo).first()
+                cfg = ConfiguracionRecargo.query.filter_by(
+                    tipo_feriado=fer.tipo
+                ).first()
                 pct = int(cfg.porcentaje) if cfg and cfg.porcentaje is not None else 0
-                items.append({
-                    "fecha": d,
-                    "tipo": fer.tipo,
-                    "descripcion": fer.descripcion or "",
-                    "minutos": mins,
-                    "pct": pct
-                })
+                items.append(
+                    {
+                        "fecha": d,
+                        "tipo": fer.tipo,
+                        "descripcion": fer.descripcion or "",
+                        "minutos": mins,
+                        "pct": pct,
+                    }
+                )
         d += timedelta(days=1)
 
     if not items:
@@ -146,7 +169,9 @@ def obtener_info_recargo_feriado(inicio_dt: datetime, fin_dt: datetime):
             "detalle": None,
         }
 
-    aplicado = max(items, key=lambda x: (x["pct"], 1 if x["tipo"] == "IRRENUNCIABLE" else 0))
+    aplicado = max(
+        items, key=lambda x: (x["pct"], 1 if x["tipo"] == "IRRENUNCIABLE" else 0)
+    )
 
     partes = []
     for it in items:
@@ -162,13 +187,17 @@ def obtener_info_recargo_feriado(inicio_dt: datetime, fin_dt: datetime):
         "minutos_feriado_total": minutos_total,
         "tipo_aplicado": aplicado["tipo"],
         "pct_aplicado": aplicado["pct"],
-        "descripcion_aplicada": (aplicado["descripcion"][:250] if aplicado.get("descripcion") else None),
-        "detalle": detalle
+        "descripcion_aplicada": (
+            aplicado["descripcion"][:250] if aplicado.get("descripcion") else None
+        ),
+        "detalle": detalle,
     }
+
 
 # -------------------------------------------------------------------
 # Seguridad / Roles / Scope por instalación
 # -------------------------------------------------------------------
+
 
 def role_required(*roles):
     roles = tuple(r.upper() for r in roles)
@@ -188,6 +217,7 @@ def role_required(*roles):
                 return redirect(url_for("main.index"))
 
             return fn(*args, **kwargs)
+
         return wrapper
 
     return decorator
@@ -221,9 +251,11 @@ def exigir_acceso_instalacion(instalacion_id: int):
     if not current_user.puede_acceder_instalacion(instalacion_id):
         abort(403)
 
+
 # -------------------------------------------------------------------
 # Reglas de negocio: adicionalidad, base y recargo
 # -------------------------------------------------------------------
+
 
 def es_turno_adicional(guardia: Guardia, inicio_dt: datetime, fin_dt: datetime) -> bool:
     if guardia.rut in GUARDIAS_SIEMPRE_VALORIZAR:
@@ -271,7 +303,9 @@ def obtener_porcentaje_recargo_feriado(inicio_dt: datetime, fin_dt: datetime) ->
     return max_pct
 
 
-def recalcular_turno(t: TurnoRegistro, guardia: Guardia, inicio_dt: datetime, fin_dt: datetime):
+def recalcular_turno(
+    t: TurnoRegistro, guardia: Guardia, inicio_dt: datetime, fin_dt: datetime
+):
     minutos_totales = int((fin_dt - inicio_dt).total_seconds() // 60)
 
     info = obtener_info_recargo_feriado(inicio_dt, fin_dt)
@@ -316,9 +350,11 @@ def recalcular_turno(t: TurnoRegistro, guardia: Guardia, inicio_dt: datetime, fi
         t.feriado_descripcion_aplicada = None
         t.feriado_detalle_calculo = None
 
+
 # -------------------------------------------------------------------
 # Rutas principales
 # -------------------------------------------------------------------
+
 
 @main.get("/")
 def index():
@@ -330,9 +366,11 @@ def index():
     }
     return render_template("index.html", stats=stats)
 
+
 # -------------------------------------------------------------------
 # Login / Logout (auditado)
 # -------------------------------------------------------------------
+
 
 @main.route("/login", methods=["GET", "POST"])
 def login():
@@ -342,11 +380,15 @@ def login():
 
         user = Usuario.query.filter_by(username=username).first()
 
-        if not user or not getattr(user, "activo", True) or not user.check_password(password):
+        if (
+            not user
+            or not getattr(user, "activo", True)
+            or not user.check_password(password)
+        ):
             audit_login(
                 "LOGIN_FAIL",
                 user_id=(user.id if user else None),
-                detalle=f"Intento fallido usuario={username}"
+                detalle=f"Intento fallido usuario={username}",
             )
             flash("Usuario o contraseña incorrectos.", "danger")
             return redirect(url_for("main.login"))
@@ -363,7 +405,7 @@ def login():
         audit_login(
             "LOGIN_OK",
             user_id=user.id,
-            detalle=f"Login exitoso ({(user.rol or '').upper()})"
+            detalle=f"Login exitoso ({(user.rol or '').upper()})",
         )
 
         flash("Bienvenido al sistema.", "success")
@@ -375,18 +417,16 @@ def login():
 @main.route("/logout")
 @login_required
 def logout():
-    audit_login(
-        "LOGOUT",
-        user_id=current_user.id,
-        detalle="Cierre de sesión"
-    )
+    audit_login("LOGOUT", user_id=current_user.id, detalle="Cierre de sesión")
     logout_user()
     flash("Sesión cerrada.", "info")
     return redirect(url_for("main.login"))
 
+
 # -------------------------------------------------------------------
 # Importación masiva de guardias (Excel)
 # -------------------------------------------------------------------
+
 
 @main.route("/import-guardias", methods=["GET", "POST"])
 @login_required
@@ -407,7 +447,15 @@ def import_guardias():
         return redirect(url_for("main.import_guardias"))
 
     cols = {c.strip(): c for c in df.columns}
-    required = ["RUT", "Ap. Paterno", "Ap. Materno", "Nombres", "Labor a realizar", "Nombre Obra", "Nombre Empleador"]
+    required = [
+        "RUT",
+        "Ap. Paterno",
+        "Ap. Materno",
+        "Nombres",
+        "Labor a realizar",
+        "Nombre Obra",
+        "Nombre Empleador",
+    ]
     faltantes = [c for c in required if c not in cols]
     if faltantes:
         flash(f"Faltan columnas: {', '.join(faltantes)}", "danger")
@@ -448,7 +496,7 @@ def import_guardias():
                 empleador=empleador,
                 obra_base=obra,
                 modalidad=modalidad_sugerida,
-                activo=True
+                activo=True,
             )
             db.session.add(g)
             creados += 1
@@ -469,13 +517,15 @@ def import_guardias():
     flash(
         f"Importación OK. Guardias creados: {creados}, actualizados: {actualizados}. "
         f"Instalaciones nuevas: {instalaciones_creadas}.",
-        "success"
+        "success",
     )
     return redirect(url_for("main.index"))
+
 
 # -------------------------------------------------------------------
 # API para autocompletar guardias
 # -------------------------------------------------------------------
+
 
 @main.get("/api/guardias")
 @login_required
@@ -484,20 +534,24 @@ def api_guardias():
     if len(q) < 2:
         return jsonify([])
 
-    res = (Guardia.query
-           .filter(
-               (Guardia.rut.ilike(f"%{q}%")) |
-               (Guardia.ap_paterno.ilike(f"%{q}%")) |
-               (Guardia.ap_materno.ilike(f"%{q}%")) |
-               (Guardia.nombres.ilike(f"%{q}%"))
-           )
-           .limit(20)
-           .all())
+    res = (
+        Guardia.query.filter(
+            (Guardia.rut.ilike(f"%{q}%"))
+            | (Guardia.ap_paterno.ilike(f"%{q}%"))
+            | (Guardia.ap_materno.ilike(f"%{q}%"))
+            | (Guardia.nombres.ilike(f"%{q}%"))
+        )
+        .limit(20)
+        .all()
+    )
 
-    out = [{
-        "rut": g.rut,
-        "label": f"{g.rut} — {g.ap_paterno} {g.ap_materno or ''} {g.nombres} ({g.modalidad})"
-    } for g in res]
+    out = [
+        {
+            "rut": g.rut,
+            "label": f"{g.rut} — {g.ap_paterno} {g.ap_materno or ''} {g.nombres} ({g.modalidad})",
+        }
+        for g in res
+    ]
     return jsonify(out)
 
 
@@ -510,38 +564,50 @@ def api_guardias_por_instalacion():
 
     exigir_acceso_instalacion(inst_id)
 
-    ruts = (db.session.query(TurnoRegistro.guardia_rut)
-            .filter(TurnoRegistro.instalacion_id == inst_id)
-            .filter(TurnoRegistro.anulado == False)  # noqa: E712
-            .distinct()
-            .all())
+    ruts = (
+        db.session.query(TurnoRegistro.guardia_rut)
+        .filter(TurnoRegistro.instalacion_id == inst_id)
+        .filter(TurnoRegistro.anulado == False)  # noqa: E712
+        .distinct()
+        .all()
+    )
 
     ruts = [r[0] for r in ruts]
     if not ruts:
         return jsonify([])
 
-    guardias = (Guardia.query
-                .filter(Guardia.rut.in_(ruts))
-                .filter(Guardia.activo == True)  # noqa: E712
-                .order_by(Guardia.ap_paterno.asc(), Guardia.nombres.asc())
-                .all())
+    guardias = (
+        Guardia.query.filter(Guardia.rut.in_(ruts))
+        .filter(Guardia.activo == True)  # noqa: E712
+        .order_by(Guardia.ap_paterno.asc(), Guardia.nombres.asc())
+        .all()
+    )
 
-    out = [{
-        "rut": g.rut,
-        "label": f"{g.ap_paterno} {g.ap_materno or ''} {g.nombres} — {g.rut} ({g.modalidad})".replace("  ", " ").strip()
-    } for g in guardias]
+    out = [
+        {
+            "rut": g.rut,
+            "label": f"{g.ap_paterno} {g.ap_materno or ''} {g.nombres} — {g.rut} ({g.modalidad})".replace(
+                "  ", " "
+            ).strip(),
+        }
+        for g in guardias
+    ]
 
     return jsonify(out)
+
 
 # -------------------------------------------------------------------
 # Turnos: crear, listar, editar, anular
 # -------------------------------------------------------------------
 
+
 @main.route("/turnos/nuevo", methods=["GET", "POST"])
 @login_required
 @role_required("ADMIN", "OPERADOR")
 def nuevo_turno():
-    instalaciones = instalaciones_permitidas_query().order_by(Instalacion.nombre.asc()).all()
+    instalaciones = (
+        instalaciones_permitidas_query().order_by(Instalacion.nombre.asc()).all()
+    )
     if not instalaciones:
         flash("No tienes obras asignadas.", "warning")
         return redirect(url_for("main.index"))
@@ -559,7 +625,10 @@ def nuevo_turno():
 
     guardia = Guardia.query.get(guardia_rut)
     if not guardia:
-        flash("Guardia no encontrado. Usa el autocompletar o importa la dotación.", "danger")
+        flash(
+            "Guardia no encontrado. Usa el autocompletar o importa la dotación.",
+            "danger",
+        )
         return redirect(url_for("main.nuevo_turno"))
 
     try:
@@ -581,7 +650,7 @@ def nuevo_turno():
         inicio_dt=inicio_dt,
         fin_dt=fin_dt,
         turno_codigo=turno_codigo,
-        observacion=observacion
+        observacion=observacion,
     )
     recalcular_turno(t, guardia, inicio_dt, fin_dt)
 
@@ -590,8 +659,10 @@ def nuevo_turno():
 
     flash(
         f"Turno guardado. Adicional: {'Sí' if t.es_adicional else 'No'}. "
-        f"Minutos feriado: {t.minutos_feriado}. Monto: ${t.monto_total:,}".replace(",", "."),
-        "success"
+        f"Minutos feriado: {t.minutos_feriado}. Monto: ${t.monto_total:,}".replace(
+            ",", "."
+        ),
+        "success",
     )
     return redirect(url_for("main.turnos_listado"))
 
@@ -604,24 +675,34 @@ def turnos_listado():
     else:
         inst_ids = [i.id for i in (current_user.instalaciones or [])]
         if not inst_ids:
-            return render_template("turnos_listado.html", dias=[], guardias_map={}, instalaciones_map={})
+            return render_template(
+                "turnos_listado.html", dias=[], guardias_map={}, instalaciones_map={}
+            )
 
-    q = (TurnoRegistro.query
-         .options(selectinload(TurnoRegistro.comentarios).selectinload(TurnoComentario.autor))
-         .filter(TurnoRegistro.anulado == False))  # noqa: E712
+    q = TurnoRegistro.query.options(
+        selectinload(TurnoRegistro.comentarios).selectinload(TurnoComentario.autor)
+    ).filter(
+        TurnoRegistro.anulado == False
+    )  # noqa: E712
 
     if inst_ids is not None:
         q = q.filter(TurnoRegistro.instalacion_id.in_(inst_ids))
 
-    turnos = (q.order_by(TurnoRegistro.inicio_dt.asc(), TurnoRegistro.id.asc())
-              .limit(500)
-              .all())
+    turnos = (
+        q.order_by(TurnoRegistro.inicio_dt.asc(), TurnoRegistro.id.asc())
+        .limit(500)
+        .all()
+    )
 
     ruts = list({t.guardia_rut for t in turnos})
     inst_ids2 = list({t.instalacion_id for t in turnos})
 
     guardias = Guardia.query.filter(Guardia.rut.in_(ruts)).all() if ruts else []
-    instalaciones = Instalacion.query.filter(Instalacion.id.in_(inst_ids2)).all() if inst_ids2 else []
+    instalaciones = (
+        Instalacion.query.filter(Instalacion.id.in_(inst_ids2)).all()
+        if inst_ids2
+        else []
+    )
 
     guardias_map = {g.rut: g for g in guardias}
     instalaciones_map = {i.id: i for i in instalaciones}
@@ -638,15 +719,17 @@ def turnos_listado():
         valorizados = [x for x in lista if x.es_adicional and (x.monto_total or 0) > 0]
         total_valorizado = sum((x.monto_total or 0) for x in valorizados)
 
-        dias.append({
-            "fecha": dia,
-            "nombre_dia": nombre_dia_es(dia),
-            "turnos": lista,
-            "guardias_unicos": guardias_unicos,
-            "cantidad_turnos": len(lista),
-            "cantidad_valorizados": len(valorizados),
-            "total_valorizado": total_valorizado
-        })
+        dias.append(
+            {
+                "fecha": dia,
+                "nombre_dia": nombre_dia_es(dia),
+                "turnos": lista,
+                "guardias_unicos": guardias_unicos,
+                "cantidad_turnos": len(lista),
+                "cantidad_valorizados": len(valorizados),
+                "total_valorizado": total_valorizado,
+            }
+        )
 
     dias.sort(key=lambda x: x["fecha"], reverse=True)
 
@@ -654,7 +737,7 @@ def turnos_listado():
         "turnos_listado.html",
         dias=dias,
         guardias_map=guardias_map,
-        instalaciones_map=instalaciones_map
+        instalaciones_map=instalaciones_map,
     )
 
 
@@ -665,10 +748,14 @@ def editar_turno(turno_id):
     t = TurnoRegistro.query.get_or_404(turno_id)
     exigir_acceso_instalacion(t.instalacion_id)
 
-    instalaciones = instalaciones_permitidas_query().order_by(Instalacion.nombre.asc()).all()
+    instalaciones = (
+        instalaciones_permitidas_query().order_by(Instalacion.nombre.asc()).all()
+    )
 
     if request.method == "GET":
-        return render_template("editar_turno.html", turno=t, instalaciones=instalaciones)
+        return render_template(
+            "editar_turno.html", turno=t, instalaciones=instalaciones
+        )
 
     instalacion_id = int(request.form["instalacion_id"])
     exigir_acceso_instalacion(instalacion_id)
@@ -730,9 +817,11 @@ def anular_turno(turno_id):
     flash("Turno anulado. Se mantuvo trazabilidad y se dejó en $0.", "warning")
     return redirect(url_for("main.turnos_listado"))
 
+
 # -------------------------------------------------------------------
 # Recalcular masivamente turnos PT (opcional)
 # -------------------------------------------------------------------
+
 
 @main.post("/turnos/recalcular-pt")
 @login_required
@@ -774,12 +863,14 @@ def recalcular_turnos_pt():
             flash("No tienes obras asignadas.", "warning")
             return redirect(request.referrer or url_for("main.turnos_listado"))
 
-    q = (db.session.query(TurnoRegistro)
-         .join(Guardia, Guardia.rut == TurnoRegistro.guardia_rut)
-         .filter(TurnoRegistro.anulado == False)  # noqa: E712
-         .filter(Guardia.modalidad == "PT")
-         .filter(TurnoRegistro.inicio_dt >= dt_desde)
-         .filter(TurnoRegistro.inicio_dt < dt_hasta_excl))
+    q = (
+        db.session.query(TurnoRegistro)
+        .join(Guardia, Guardia.rut == TurnoRegistro.guardia_rut)
+        .filter(TurnoRegistro.anulado == False)  # noqa: E712
+        .filter(Guardia.modalidad == "PT")
+        .filter(TurnoRegistro.inicio_dt >= dt_desde)
+        .filter(TurnoRegistro.inicio_dt < dt_hasta_excl)
+    )
 
     if inst_ids is not None:
         q = q.filter(TurnoRegistro.instalacion_id.in_(inst_ids))
@@ -798,9 +889,11 @@ def recalcular_turnos_pt():
     flash(f"Recalculo PT OK. Turnos recalculados: {recalculados}.", "success")
     return redirect(request.referrer or url_for("main.turnos_listado"))
 
+
 # -------------------------------------------------------------------
 # Comentarios de revisión
 # -------------------------------------------------------------------
+
 
 @main.post("/turnos/<int:turno_id>/comentar")
 @login_required
@@ -814,11 +907,7 @@ def turno_comentar(turno_id):
         flash("El comentario no puede estar vacío.", "danger")
         return redirect(request.referrer or url_for("main.turnos_listado"))
 
-    c = TurnoComentario(
-        turno_id=t.id,
-        autor_id=current_user.id,
-        texto=texto[:500]
-    )
+    c = TurnoComentario(turno_id=t.id, autor_id=current_user.id, texto=texto[:500])
     db.session.add(c)
     db.session.commit()
 
@@ -840,9 +929,11 @@ def comentario_resolver(comentario_id):
     flash("Comentario marcado como resuelto.", "success")
     return redirect(request.referrer or url_for("main.turnos_listado"))
 
+
 # -------------------------------------------------------------------
 # Consulta por trabajador
 # -------------------------------------------------------------------
+
 
 @main.route("/turnos/por-guardia", methods=["GET"])
 @login_required
@@ -877,7 +968,9 @@ def turnos_por_guardia():
     else:
         sugerido_hasta = date(hoy.year, hoy.month + 1, 1) - timedelta(days=1)
 
-    instalaciones = instalaciones_permitidas_query().order_by(Instalacion.nombre.asc()).all()
+    instalaciones = (
+        instalaciones_permitidas_query().order_by(Instalacion.nombre.asc()).all()
+    )
     guardia = Guardia.query.get(guardia_rut) if guardia_rut else None
 
     turnos = []
@@ -906,21 +999,31 @@ def turnos_por_guardia():
             resumen["instalacion_nombre"] = inst.nombre
 
     if instalacion_id and guardia:
-        q = (TurnoRegistro.query
-             .options(selectinload(TurnoRegistro.comentarios).selectinload(TurnoComentario.autor))
-             .filter_by(anulado=False)
-             .filter(TurnoRegistro.instalacion_id == instalacion_id)
-             .filter(TurnoRegistro.guardia_rut == guardia.rut))
+        q = (
+            TurnoRegistro.query.options(
+                selectinload(TurnoRegistro.comentarios).selectinload(
+                    TurnoComentario.autor
+                )
+            )
+            .filter_by(anulado=False)
+            .filter(TurnoRegistro.instalacion_id == instalacion_id)
+            .filter(TurnoRegistro.guardia_rut == guardia.rut)
+        )
 
         if desde:
             q = q.filter(TurnoRegistro.inicio_dt >= datetime.combine(desde, time(0, 0)))
         if hasta:
-            q = q.filter(TurnoRegistro.inicio_dt < datetime.combine(hasta + timedelta(days=1), time(0, 0)))
+            q = q.filter(
+                TurnoRegistro.inicio_dt
+                < datetime.combine(hasta + timedelta(days=1), time(0, 0))
+            )
 
         turnos = q.order_by(TurnoRegistro.id.asc()).all()
 
         resumen["rut"] = guardia.rut
-        resumen["nombre"] = f"{guardia.ap_paterno} {guardia.ap_materno or ''} {guardia.nombres}".strip()
+        resumen["nombre"] = (
+            f"{guardia.ap_paterno} {guardia.ap_materno or ''} {guardia.nombres}".strip()
+        )
         resumen["modalidad"] = guardia.modalidad or ""
         resumen["cantidad_turnos"] = len(turnos)
 
@@ -942,12 +1045,14 @@ def turnos_por_guardia():
         turnos=turnos,
         resumen=resumen,
         sugerido_desde=sugerido_desde,
-        sugerido_hasta=sugerido_hasta
+        sugerido_hasta=sugerido_hasta,
     )
+
 
 # -------------------------------------------------------------------
 # Gestión de recargos por tipo de feriado
 # -------------------------------------------------------------------
+
 
 @main.route("/config/recargos", methods=["GET", "POST"])
 @login_required
@@ -977,10 +1082,16 @@ def config_recargos():
     existentes = {c.tipo_feriado: c for c in ConfiguracionRecargo.query.all()}
     data = []
     for tipo in tipos:
-        data.append({
-            "tipo": tipo,
-            "pct": int(existentes[tipo].porcentaje) if tipo in existentes and existentes[tipo].porcentaje is not None else 0
-        })
+        data.append(
+            {
+                "tipo": tipo,
+                "pct": (
+                    int(existentes[tipo].porcentaje)
+                    if tipo in existentes and existentes[tipo].porcentaje is not None
+                    else 0
+                ),
+            }
+        )
 
     return render_template("config_recargos.html", data=data)
 
@@ -1036,9 +1147,11 @@ def feriado_eliminar(fecha):
     flash("Feriado eliminado.", "warning")
     return redirect(url_for("main.feriados_listado"))
 
+
 # -------------------------------------------------------------------
 # Guardias: listado, crear, editar
 # -------------------------------------------------------------------
+
 
 @main.get("/guardias")
 @login_required
@@ -1049,15 +1162,17 @@ def guardias_listado():
     query = Guardia.query
     if q:
         query = query.filter(
-            (Guardia.rut.ilike(f"%{q}%")) |
-            (Guardia.ap_paterno.ilike(f"%{q}%")) |
-            (Guardia.ap_materno.ilike(f"%{q}%")) |
-            (Guardia.nombres.ilike(f"%{q}%")) |
-            (Guardia.empleador.ilike(f"%{q}%")) |
-            (Guardia.obra_base.ilike(f"%{q}%"))
+            (Guardia.rut.ilike(f"%{q}%"))
+            | (Guardia.ap_paterno.ilike(f"%{q}%"))
+            | (Guardia.ap_materno.ilike(f"%{q}%"))
+            | (Guardia.nombres.ilike(f"%{q}%"))
+            | (Guardia.empleador.ilike(f"%{q}%"))
+            | (Guardia.obra_base.ilike(f"%{q}%"))
         )
 
-    guardias = query.order_by(Guardia.ap_paterno.asc(), Guardia.nombres.asc()).limit(200).all()
+    guardias = (
+        query.order_by(Guardia.ap_paterno.asc(), Guardia.nombres.asc()).limit(200).all()
+    )
     return render_template("guardias_listado.html", guardias=guardias, q=q)
 
 
@@ -1065,10 +1180,14 @@ def guardias_listado():
 @login_required
 @role_required("ADMIN", "OPERADOR")
 def guardia_nuevo():
-    instalaciones = instalaciones_permitidas_query().order_by(Instalacion.nombre.asc()).all()
+    instalaciones = (
+        instalaciones_permitidas_query().order_by(Instalacion.nombre.asc()).all()
+    )
 
     if request.method == "GET":
-        return render_template("guardia_form.html", modo="nuevo", instalaciones=instalaciones, g=None)
+        return render_template(
+            "guardia_form.html", modo="nuevo", instalaciones=instalaciones, g=None
+        )
 
     rut = normalizar_rut(request.form.get("rut", ""))
     ap_paterno = (request.form.get("ap_paterno") or "").strip()
@@ -1093,7 +1212,9 @@ def guardia_nuevo():
         return redirect(url_for("main.guardia_nuevo"))
 
     if Guardia.query.get(rut):
-        flash("Ese RUT ya existe. Puedes editar el guardia desde el listado.", "warning")
+        flash(
+            "Ese RUT ya existe. Puedes editar el guardia desde el listado.", "warning"
+        )
         return redirect(url_for("main.guardias_listado", q=rut))
 
     if obra_base:
@@ -1110,7 +1231,7 @@ def guardia_nuevo():
         empleador=empleador,
         obra_base=obra_base,
         modalidad=modalidad,
-        activo=activo
+        activo=activo,
     )
     db.session.add(g)
     db.session.commit()
@@ -1125,10 +1246,14 @@ def guardia_nuevo():
 def guardia_editar(rut):
     rut_n = normalizar_rut(rut)
     g = Guardia.query.get_or_404(rut_n)
-    instalaciones = instalaciones_permitidas_query().order_by(Instalacion.nombre.asc()).all()
+    instalaciones = (
+        instalaciones_permitidas_query().order_by(Instalacion.nombre.asc()).all()
+    )
 
     if request.method == "GET":
-        return render_template("guardia_form.html", modo="editar", instalaciones=instalaciones, g=g)
+        return render_template(
+            "guardia_form.html", modo="editar", instalaciones=instalaciones, g=g
+        )
 
     ap_paterno = (request.form.get("ap_paterno") or "").strip()
     ap_materno = (request.form.get("ap_materno") or "").strip()
@@ -1165,9 +1290,11 @@ def guardia_editar(rut):
     flash("Guardia actualizado correctamente.", "success")
     return redirect(url_for("main.guardias_listado", q=g.rut))
 
+
 # -------------------------------------------------------------------
 # Reportes
 # -------------------------------------------------------------------
+
 
 @main.route("/reportes/resumen-turnos", methods=["GET"])
 @login_required
@@ -1181,7 +1308,11 @@ def reporte_resumen_turnos():
 
     hoy = date.today()
     sugerido_desde = date(hoy.year, hoy.month, 1)
-    sugerido_hasta = (date(hoy.year, 12, 31) if hoy.month == 12 else (date(hoy.year, hoy.month + 1, 1) - timedelta(days=1)))
+    sugerido_hasta = (
+        date(hoy.year, 12, 31)
+        if hoy.month == 12
+        else (date(hoy.year, hoy.month + 1, 1) - timedelta(days=1))
+    )
 
     desde = None
     hasta = None
@@ -1203,7 +1334,9 @@ def reporte_resumen_turnos():
     if not hasta:
         hasta = sugerido_hasta
 
-    instalaciones = instalaciones_permitidas_query().order_by(Instalacion.nombre.asc()).all()
+    instalaciones = (
+        instalaciones_permitidas_query().order_by(Instalacion.nombre.asc()).all()
+    )
     if not current_user.es_admin():
         inst_ids_scope = [i.id for i in (current_user.instalaciones or [])]
     else:
@@ -1212,19 +1345,74 @@ def reporte_resumen_turnos():
     if instalacion_id:
         exigir_acceso_instalacion(instalacion_id)
 
-    q = (db.session.query(
+    q = (
+        db.session.query(
             TurnoRegistro.guardia_rut.label("rut"),
             func.count(TurnoRegistro.id).label("turnos_totales"),
-            func.sum(case((TurnoRegistro.turno_codigo == "DIA", 1), else_=0)).label("turnos_dia"),
-            func.sum(case((TurnoRegistro.turno_codigo != "DIA", 1), else_=0)).label("turnos_noche"),
-            func.sum(case(((TurnoRegistro.monto_total > 0) & (TurnoRegistro.es_adicional == True), 1), else_=0)).label("turnos_valorizados"),
-            func.coalesce(func.sum(TurnoRegistro.minutos_feriado), 0).label("minutos_feriado"),
-            func.coalesce(func.sum(case(((TurnoRegistro.monto_total > 0) & (TurnoRegistro.es_adicional == True), TurnoRegistro.monto_base), else_=0)), 0).label("monto_base"),
-            func.coalesce(func.sum(case(((TurnoRegistro.monto_total > 0) & (TurnoRegistro.es_adicional == True), TurnoRegistro.monto_recargo), else_=0)), 0).label("monto_recargo"),
-            func.coalesce(func.sum(case(((TurnoRegistro.monto_total > 0) & (TurnoRegistro.es_adicional == True), TurnoRegistro.monto_total), else_=0)), 0).label("monto_total"),
+            func.sum(case((TurnoRegistro.turno_codigo == "DIA", 1), else_=0)).label(
+                "turnos_dia"
+            ),
+            func.sum(case((TurnoRegistro.turno_codigo != "DIA", 1), else_=0)).label(
+                "turnos_noche"
+            ),
+            func.sum(
+                case(
+                    (
+                        (TurnoRegistro.monto_total > 0)
+                        & (TurnoRegistro.es_adicional == True),
+                        1,
+                    ),
+                    else_=0,
+                )
+            ).label("turnos_valorizados"),
+            func.coalesce(func.sum(TurnoRegistro.minutos_feriado), 0).label(
+                "minutos_feriado"
+            ),
+            func.coalesce(
+                func.sum(
+                    case(
+                        (
+                            (TurnoRegistro.monto_total > 0)
+                            & (TurnoRegistro.es_adicional == True),
+                            TurnoRegistro.monto_base,
+                        ),
+                        else_=0,
+                    )
+                ),
+                0,
+            ).label("monto_base"),
+            func.coalesce(
+                func.sum(
+                    case(
+                        (
+                            (TurnoRegistro.monto_total > 0)
+                            & (TurnoRegistro.es_adicional == True),
+                            TurnoRegistro.monto_recargo,
+                        ),
+                        else_=0,
+                    )
+                ),
+                0,
+            ).label("monto_recargo"),
+            func.coalesce(
+                func.sum(
+                    case(
+                        (
+                            (TurnoRegistro.monto_total > 0)
+                            & (TurnoRegistro.es_adicional == True),
+                            TurnoRegistro.monto_total,
+                        ),
+                        else_=0,
+                    )
+                ),
+                0,
+            ).label("monto_total"),
         )
         .filter(TurnoRegistro.inicio_dt >= datetime.combine(desde, time(0, 0)))
-        .filter(TurnoRegistro.inicio_dt < datetime.combine(hasta + timedelta(days=1), time(0, 0)))
+        .filter(
+            TurnoRegistro.inicio_dt
+            < datetime.combine(hasta + timedelta(days=1), time(0, 0))
+        )
     )
 
     if not incluir_anulados:
@@ -1237,7 +1425,9 @@ def reporte_resumen_turnos():
         q = q.filter(TurnoRegistro.instalacion_id == instalacion_id)
 
     if solo_valorizados:
-        q = q.filter(TurnoRegistro.monto_total > 0).filter(TurnoRegistro.es_adicional == True)  # noqa: E712
+        q = q.filter(TurnoRegistro.monto_total > 0).filter(
+            TurnoRegistro.es_adicional == True
+        )  # noqa: E712
 
     q = q.group_by(TurnoRegistro.guardia_rut)
 
@@ -1250,21 +1440,23 @@ def reporte_resumen_turnos():
     data = []
     for r in rows:
         g = guardias_map.get(r.rut)
-        nombre = (g.nombre_completo() if g else r.rut)
-        modalidad = (g.modalidad if g else "")
-        data.append({
-            "rut": r.rut,
-            "nombre": nombre,
-            "modalidad": modalidad,
-            "turnos_totales": int(r.turnos_totales or 0),
-            "turnos_valorizados": int(r.turnos_valorizados or 0),
-            "turnos_dia": int(r.turnos_dia or 0),
-            "turnos_noche": int(r.turnos_noche or 0),
-            "minutos_feriado": int(r.minutos_feriado or 0),
-            "monto_base": int(r.monto_base or 0),
-            "monto_recargo": int(r.monto_recargo or 0),
-            "monto_total": int(r.monto_total or 0),
-        })
+        nombre = g.nombre_completo() if g else r.rut
+        modalidad = g.modalidad if g else ""
+        data.append(
+            {
+                "rut": r.rut,
+                "nombre": nombre,
+                "modalidad": modalidad,
+                "turnos_totales": int(r.turnos_totales or 0),
+                "turnos_valorizados": int(r.turnos_valorizados or 0),
+                "turnos_dia": int(r.turnos_dia or 0),
+                "turnos_noche": int(r.turnos_noche or 0),
+                "minutos_feriado": int(r.minutos_feriado or 0),
+                "monto_base": int(r.monto_base or 0),
+                "monto_recargo": int(r.monto_recargo or 0),
+                "monto_total": int(r.monto_total or 0),
+            }
+        )
 
     data.sort(key=lambda x: x["monto_total"], reverse=True)
 
@@ -1289,5 +1481,5 @@ def reporte_resumen_turnos():
         data=data,
         totales=totales,
         sugerido_desde=sugerido_desde,
-        sugerido_hasta=sugerido_hasta
+        sugerido_hasta=sugerido_hasta,
     )

@@ -21,10 +21,12 @@ def create_app():
 
     # Blueprint principal
     from .routes import main
+
     app.register_blueprint(main)
 
     # Blueprint de usuarios (ADMIN)
     from .usuarios_routes import usuarios_bp
+
     app.register_blueprint(usuarios_bp)
 
     # Importar modelos
@@ -34,6 +36,7 @@ def create_app():
     from .models import Usuario
 
     from .perfil_routes import perfil_bp
+
     app.register_blueprint(perfil_bp)
 
     @login_manager.user_loader
