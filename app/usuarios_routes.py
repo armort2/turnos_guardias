@@ -1,11 +1,12 @@
 import re
-from flask import Blueprint, render_template, request, redirect, url_for, flash
-from flask_login import login_required, current_user
-from sqlalchemy.orm import selectinload
+
+from flask import Blueprint, flash, redirect, render_template, request, url_for
+from flask_login import current_user, login_required
 from sqlalchemy import or_
+from sqlalchemy.orm import selectinload
 
 from . import db
-from .models import Usuario, Instalacion, AuditLog
+from .models import AuditLog, Instalacion, Usuario
 from .routes import role_required  # reutiliza tu decorator
 
 usuarios_bp = Blueprint("usuarios", __name__)

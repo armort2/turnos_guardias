@@ -1,64 +1,32 @@
-from flask import (
-    Blueprint,
-    render_template,
-    request,
-    redirect,
-    url_for,
-    flash,
-    jsonify,
-    abort,
-)
-from datetime import datetime, timedelta, time, date
 import re
 from collections import defaultdict
+from datetime import date, datetime, time, timedelta
 from functools import wraps
 
 import pandas as pd
-
-from flask_login import current_user, login_required, login_user, logout_user
+from flask import (
+    abort,
+    flash,
+    jsonify,
+    redirect,
+    render_template,
+    request,
+    url_for,
+)
+from flask_login import current_user, login_required
+from sqlalchemy import case, func
 from sqlalchemy.orm import selectinload
-from sqlalchemy import func, case
 
-from . import db
-from .models import (
+from .. import db
+from ..models import (
+    ConfiguracionRecargo,
+    Feriado,
     Guardia,
     Instalacion,
-    Feriado,
-    TurnoRegistro,
-    ConfiguracionRecargo,
     TurnoComentario,
-    Usuario,
-    AuditLog,
+    TurnoRegistro,
 )
-
-main = Blueprint("main", __name__)
-
-# -------------------------------------------------------------------
-# Auditoría de seguridad (login / logout)
-# -------------------------------------------------------------------
-
-
-def audit_login(accion: str, user_id=None, detalle: str = ""):
-    """
-    Auditoría simple y segura (si falla, no rompe la operación).
-    """
-    try:
-        ip = request.headers.get("CF-Connecting-IP") or request.remote_addr
-        ua = (request.headers.get("User-Agent") or "")[:250]
-
-        log = AuditLog(
-            actor_id=user_id,
-            target_user_id=user_id,
-            accion=accion,
-            detalle=(detalle or "")[:500],
-            ip=(ip or "")[:60],
-            user_agent=ua,
-        )
-        db.session.add(log)
-        db.session.commit()
-    except Exception:
-        db.session.rollback()
-
+from . import main
 
 # -------------------------------------------------------------------
 # Helpers generales
@@ -261,10 +229,7 @@ def es_turno_adicional(guardia: Guardia, inicio_dt: datetime, fin_dt: datetime) 
     if guardia.rut in GUARDIAS_SIEMPRE_VALORIZAR:
         return True
 
-    if guardia.modalidad == "EXT":
-        return True
-
-    if guardia.modalidad == "PT":
+    if guardia.modalidad in ("EXT", "PT"):
         return True
 
     min_fer = calcular_minutos_feriado(inicio_dt, fin_dt)
@@ -288,19 +253,6 @@ def monto_base_turno(guardia: Guardia) -> int:
         return 30000
 
     return 33000
-
-
-def obtener_porcentaje_recargo_feriado(inicio_dt: datetime, fin_dt: datetime) -> int:
-    max_pct = 0
-    d = inicio_dt.date()
-    while d <= fin_dt.date():
-        fer = Feriado.query.get(d)
-        if fer:
-            cfg = ConfiguracionRecargo.query.filter_by(tipo_feriado=fer.tipo).first()
-            if cfg and cfg.porcentaje is not None:
-                max_pct = max(max_pct, int(cfg.porcentaje))
-        d += timedelta(days=1)
-    return max_pct
 
 
 def recalcular_turno(
@@ -365,62 +317,6 @@ def index():
         "feriados": Feriado.query.count(),
     }
     return render_template("index.html", stats=stats)
-
-
-# -------------------------------------------------------------------
-# Login / Logout (auditado)
-# -------------------------------------------------------------------
-
-
-@main.route("/login", methods=["GET", "POST"])
-def login():
-    if request.method == "POST":
-        username = request.form.get("username", "").strip()
-        password = request.form.get("password", "").strip()
-
-        user = Usuario.query.filter_by(username=username).first()
-
-        if (
-            not user
-            or not getattr(user, "activo", True)
-            or not user.check_password(password)
-        ):
-            audit_login(
-                "LOGIN_FAIL",
-                user_id=(user.id if user else None),
-                detalle=f"Intento fallido usuario={username}",
-            )
-            flash("Usuario o contraseña incorrectos.", "danger")
-            return redirect(url_for("main.login"))
-
-        login_user(user)
-
-        # Registrar último acceso
-        try:
-            user.ultimo_acceso = datetime.utcnow()
-            db.session.commit()
-        except Exception:
-            db.session.rollback()
-
-        audit_login(
-            "LOGIN_OK",
-            user_id=user.id,
-            detalle=f"Login exitoso ({(user.rol or '').upper()})",
-        )
-
-        flash("Bienvenido al sistema.", "success")
-        return redirect(url_for("main.index"))
-
-    return render_template("login.html")
-
-
-@main.route("/logout")
-@login_required
-def logout():
-    audit_login("LOGOUT", user_id=current_user.id, detalle="Cierre de sesión")
-    logout_user()
-    flash("Sesión cerrada.", "info")
-    return redirect(url_for("main.login"))
 
 
 # -------------------------------------------------------------------
@@ -567,7 +463,7 @@ def api_guardias_por_instalacion():
     ruts = (
         db.session.query(TurnoRegistro.guardia_rut)
         .filter(TurnoRegistro.instalacion_id == inst_id)
-        .filter(TurnoRegistro.anulado == False)  # noqa: E712
+        .filter(TurnoRegistro.anulado.is_(False))
         .distinct()
         .all()
     )
@@ -578,7 +474,7 @@ def api_guardias_por_instalacion():
 
     guardias = (
         Guardia.query.filter(Guardia.rut.in_(ruts))
-        .filter(Guardia.activo == True)  # noqa: E712
+        .filter(Guardia.activo.is_(True))
         .order_by(Guardia.ap_paterno.asc(), Guardia.nombres.asc())
         .all()
     )
@@ -594,6 +490,12 @@ def api_guardias_por_instalacion():
     ]
 
     return jsonify(out)
+
+
+# -------------------------------------------------------------------
+# (Desde aquí hacia abajo, pega el resto de tus secciones tal como las tienes)
+# Turnos / Comentarios / Reportes, etc.
+# -------------------------------------------------------------------
 
 
 # -------------------------------------------------------------------
@@ -681,9 +583,7 @@ def turnos_listado():
 
     q = TurnoRegistro.query.options(
         selectinload(TurnoRegistro.comentarios).selectinload(TurnoComentario.autor)
-    ).filter(
-        TurnoRegistro.anulado == False
-    )  # noqa: E712
+    ).filter(TurnoRegistro.anulado.is_(False))
 
     if inst_ids is not None:
         q = q.filter(TurnoRegistro.instalacion_id.in_(inst_ids))
@@ -866,7 +766,7 @@ def recalcular_turnos_pt():
     q = (
         db.session.query(TurnoRegistro)
         .join(Guardia, Guardia.rut == TurnoRegistro.guardia_rut)
-        .filter(TurnoRegistro.anulado == False)  # noqa: E712
+        .filter(TurnoRegistro.anulado.is_(False))
         .filter(Guardia.modalidad == "PT")
         .filter(TurnoRegistro.inicio_dt >= dt_desde)
         .filter(TurnoRegistro.inicio_dt < dt_hasta_excl)
@@ -1005,7 +905,7 @@ def turnos_por_guardia():
                     TurnoComentario.autor
                 )
             )
-            .filter_by(anulado=False)
+            .filter(TurnoRegistro.anulado.is_(False))
             .filter(TurnoRegistro.instalacion_id == instalacion_id)
             .filter(TurnoRegistro.guardia_rut == guardia.rut)
         )
@@ -1359,7 +1259,7 @@ def reporte_resumen_turnos():
                 case(
                     (
                         (TurnoRegistro.monto_total > 0)
-                        & (TurnoRegistro.es_adicional == True),
+                        & TurnoRegistro.es_adicional.is_(True),
                         1,
                     ),
                     else_=0,
@@ -1373,7 +1273,7 @@ def reporte_resumen_turnos():
                     case(
                         (
                             (TurnoRegistro.monto_total > 0)
-                            & (TurnoRegistro.es_adicional == True),
+                            & TurnoRegistro.es_adicional.is_(True),
                             TurnoRegistro.monto_base,
                         ),
                         else_=0,
@@ -1386,7 +1286,7 @@ def reporte_resumen_turnos():
                     case(
                         (
                             (TurnoRegistro.monto_total > 0)
-                            & (TurnoRegistro.es_adicional == True),
+                            & TurnoRegistro.es_adicional.is_(True),
                             TurnoRegistro.monto_recargo,
                         ),
                         else_=0,
@@ -1399,7 +1299,7 @@ def reporte_resumen_turnos():
                     case(
                         (
                             (TurnoRegistro.monto_total > 0)
-                            & (TurnoRegistro.es_adicional == True),
+                            & TurnoRegistro.es_adicional.is_(True),
                             TurnoRegistro.monto_total,
                         ),
                         else_=0,
@@ -1416,7 +1316,7 @@ def reporte_resumen_turnos():
     )
 
     if not incluir_anulados:
-        q = q.filter(TurnoRegistro.anulado == False)  # noqa: E712
+        q = q.filter(TurnoRegistro.anulado.is_(False))
 
     if inst_ids_scope is not None:
         q = q.filter(TurnoRegistro.instalacion_id.in_(inst_ids_scope))
@@ -1426,8 +1326,8 @@ def reporte_resumen_turnos():
 
     if solo_valorizados:
         q = q.filter(TurnoRegistro.monto_total > 0).filter(
-            TurnoRegistro.es_adicional == True
-        )  # noqa: E712
+            TurnoRegistro.es_adicional.is_(True)
+        )
 
     q = q.group_by(TurnoRegistro.guardia_rut)
 
