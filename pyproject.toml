@@ -14,3 +14,6 @@ ignore = ["E501"]
 
 [tool.ruff.lint.isort]
 combine-as-imports = true
+
+[tool.ruff.lint.per-file-ignores]
+"app/routes/__init__.py" = ["E402", "F401"]

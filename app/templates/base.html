@@ -13,7 +13,6 @@
 
   <!-- Uso de íconos en cualquier template -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
-
 </head>
 
 <body>
@@ -21,7 +20,7 @@
 <nav class="navbar navbar-expand-lg navbar-dark">
   <div class="container">
 
-    <a class="navbar-brand" href="/">
+    <a class="navbar-brand" href="{{ url_for('main.index') }}">
       Turnos Guardias
       <span class="badge badge-soft ms-2">Sistema</span>
     </a>
@@ -34,57 +33,70 @@
 
     <div class="collapse navbar-collapse" id="navbarMain">
 
-    <!-- Menú principal -->
-    <ul class="navbar-nav me-auto mb-2 mb-lg-0 navbar-actions">
+      <!-- Menú principal -->
+      <ul class="navbar-nav me-auto mb-2 mb-lg-0 navbar-actions">
 
-      <li class="nav-item">
-        <a class="nav-link nav-chip {% if request.path == '/' %}active{% endif %}" href="/">
-          <i class="bi bi-speedometer2 me-2"></i> Inicio
-        </a>
-      </li>
-
-      <li class="nav-item">
-        <a class="nav-link nav-chip {% if request.path.startswith('/guardias') %}active{% endif %}" href="/guardias">
-          <i class="bi bi-people me-2"></i> Guardias
-        </a>
-      </li>
-
-      <li class="nav-item">
-        <a class="nav-link nav-chip {% if request.path.startswith('/turnos/nuevo') %}active{% endif %}" href="/turnos/nuevo">
-          <i class="bi bi-clock-history me-2"></i> Registrar turno
-        </a>
-      </li>
-
-      <li class="nav-item">
-        <a class="nav-link nav-chip {% if request.path == '/turnos' %}active{% endif %}" href="/turnos">
-          <i class="bi bi-list-check me-2"></i> Listado turnos
-        </a>
-      </li>
-
-      <li class="nav-item">
-        <a class="nav-link nav-chip {% if request.path.startswith('/turnos/por-guardia') %}active{% endif %}" href="/turnos/por-guardia">
-          <i class="bi bi-person-lines-fill me-2"></i> Consulta por trabajador
-        </a>
-      </li>
-
-      {% if current_user.is_authenticated and (current_user.rol or "")|upper in ["ADMIN","OPERADOR","REVISOR"] %}
         <li class="nav-item">
-          <a class="nav-link nav-chip nav-chip-report {% if request.path.startswith('/reportes/resumen-turnos') %}active{% endif %}" href="/reportes/resumen-turnos">
-            <i class="bi bi-bar-chart me-2"></i> Resumen turnos
+          <a class="nav-link nav-chip {% if request.path == url_for('main.index') %}active{% endif %}"
+             {% if request.path == url_for('main.index') %}aria-current="page"{% endif %}
+             href="{{ url_for('main.index') }}">
+            <i class="bi bi-speedometer2 me-2"></i> Inicio
           </a>
         </li>
-      {% endif %}
 
-      {% if current_user.is_authenticated and current_user.es_admin() %}
         <li class="nav-item">
-          <a class="nav-link nav-chip nav-chip-admin {% if request.path.startswith('/usuarios') %}active{% endif %}" href="/usuarios">
-            <i class="bi bi-person-gear me-2"></i> Gestión de usuarios
+          <a class="nav-link nav-chip {% if request.path.startswith('/guardias') %}active{% endif %}"
+             {% if request.path.startswith('/guardias') %}aria-current="page"{% endif %}
+             href="/guardias">
+            <i class="bi bi-people me-2"></i> Guardias
           </a>
         </li>
-      {% endif %}
 
-    </ul>
+        <li class="nav-item">
+          <a class="nav-link nav-chip {% if request.path.startswith(url_for('main.nuevo_turno')) %}active{% endif %}"
+             {% if request.path.startswith(url_for('main.nuevo_turno')) %}aria-current="page"{% endif %}
+             href="{{ url_for('main.nuevo_turno') }}">
+            <i class="bi bi-clock-history me-2"></i> Registrar turno
+          </a>
+        </li>
 
+        <li class="nav-item">
+          <a class="nav-link nav-chip {% if request.path == url_for('main.turnos_listado') %}active{% endif %}"
+             {% if request.path == url_for('main.turnos_listado') %}aria-current="page"{% endif %}
+             href="{{ url_for('main.turnos_listado') }}">
+            <i class="bi bi-list-check me-2"></i> Listado turnos
+          </a>
+        </li>
+
+        <li class="nav-item">
+          <a class="nav-link nav-chip {% if request.path.startswith(url_for('main.turnos_por_guardia')) %}active{% endif %}"
+             {% if request.path.startswith(url_for('main.turnos_por_guardia')) %}aria-current="page"{% endif %}
+             href="{{ url_for('main.turnos_por_guardia') }}">
+            <i class="bi bi-person-lines-fill me-2"></i> Consulta por trabajador
+          </a>
+        </li>
+
+        {% if current_user.is_authenticated and (current_user.rol or "")|upper in ["ADMIN","OPERADOR","REVISOR"] %}
+          <li class="nav-item">
+            <a class="nav-link nav-chip nav-chip-report {% if request.path.startswith(url_for('main.reporte_resumen_turnos')) %}active{% endif %}"
+               {% if request.path.startswith(url_for('main.reporte_resumen_turnos')) %}aria-current="page"{% endif %}
+               href="{{ url_for('main.reporte_resumen_turnos') }}">
+              <i class="bi bi-bar-chart me-2"></i> Resumen turnos
+            </a>
+          </li>
+        {% endif %}
+
+        {% if current_user.is_authenticated and current_user.es_admin() %}
+          <li class="nav-item">
+            <a class="nav-link nav-chip nav-chip-admin {% if request.path.startswith(url_for('usuarios.usuarios_listado')) %}active{% endif %}"
+               {% if request.path.startswith(url_for('usuarios.usuarios_listado')) %}aria-current="page"{% endif %}
+               href="{{ url_for('usuarios.usuarios_listado') }}">
+              <i class="bi bi-person-gear me-2"></i> Gestión de usuarios
+            </a>
+          </li>
+        {% endif %}
+
+      </ul>
 
       <!-- Área derecha (sesión) -->
       <div class="d-flex align-items-center gap-2 navbar-session">
@@ -97,11 +109,11 @@
             {{ current_user.username if current_user.username is defined else "Sesión activa" }}
           </span>
 
-          <a class="btn btn-sm btn-logout" href="/logout">
+          <a class="btn btn-sm btn-logout" href="{{ url_for('main.logout') }}">
             Cerrar sesión
           </a>
         {% else %}
-          <a class="btn btn-sm btn-primary" href="/login">
+          <a class="btn btn-sm btn-primary" href="{{ url_for('main.login') }}">
             Iniciar sesión
           </a>
         {% endif %}
@@ -113,6 +125,7 @@
 
 <main class="container my-4">
 
+  {# Flash messages (centralizado) #}
   {% with messages = get_flashed_messages(with_categories=true) %}
     {% if messages %}
       <div class="mb-3">
@@ -135,7 +148,7 @@
   <div class="app-footer">
     <div class="d-flex justify-content-between flex-wrap gap-2">
       <div>Turnos Guardias · Operación y control</div>
-      <div class="text-muted">v1 · {{ (current_user.rol or "INVITADO")|upper if current_user is defined else "INVITADO" }}</div>
+      <div class="text-muted">v1 · {{ (current_user.rol or "INVITADO")|upper }}</div>
     </div>
   </div>
 

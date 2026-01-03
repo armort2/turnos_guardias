@@ -12,36 +12,24 @@
           Control de Turnos · Acceso autorizado
         </div>
 
-        {# === Mensajes del sistema (errores / bloqueos / avisos) === #}
-        {% with messages = get_flashed_messages(with_categories=true) %}
-          {% if messages %}
-            <div class="mb-3">
-              {% for category, msg in messages %}
-                {% set cat = category %}
-                {% if category in ["message"] %}{% set cat = "info" %}{% endif %}
-                {% if category in ["error"] %}{% set cat = "danger" %}{% endif %}
-
-                <div class="alert alert-{{ cat }} py-2 mb-2">
-                  {{ msg }}
-                </div>
-              {% endfor %}
-            </div>
-          {% endif %}
-        {% endwith %}
-
         <form method="post" autocomplete="off">
+          {# Preserva "next" para redirección posterior al login (validado server-side) #}
+          <input type="hidden" name="next" value="{{ next or '' }}">
+
           <div class="mb-2">
             <label class="form-label">Usuario</label>
             <input
               class="form-control"
               name="username"
+              value="{{ request.form.get('username','') }}"
               required
               autofocus
               placeholder="usuario o correo"
+              autocomplete="username"
             >
           </div>
 
-          <div class="mb-3">
+          <div class="mb-2">
             <label class="form-label">Contraseña</label>
             <input
               type="password"
@@ -49,10 +37,20 @@
               name="password"
               required
               placeholder="••••••••"
+              autocomplete="current-password"
             >
           </div>
 
-          <button class="btn btn-primary w-100">
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" id="remember" name="remember">
+              <label class="form-check-label" for="remember">
+                Recordarme
+              </label>
+            </div>
+          </div>
+
+          <button class="btn btn-primary w-100" type="submit">
             Ingresar
           </button>
         </form>
