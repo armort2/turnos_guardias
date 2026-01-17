@@ -5,15 +5,15 @@ services:
     restart: always
     environment:
       TZ: America/Santiago
-      POSTGRES_DB: turnos
-      POSTGRES_USER: turnos_user
-      POSTGRES_PASSWORD: turnos_pass
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
       - pgdata:/var/lib/postgresql/data
     ports:
       - "5433:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U turnos_user -d turnos"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -29,8 +29,8 @@ services:
       - "5000:5000"
     environment:
       TZ: America/Santiago
-      DATABASE_URL: postgresql://turnos_user:turnos_pass@db:5432/turnos
-      SECRET_KEY: cambia-esto-por-algo-serio
+      DATABASE_URL: ${DATABASE_URL}
+      SECRET_KEY: ${SECRET_KEY}
       FLASK_ENV: production
     command: ["gunicorn", "-w", "2", "-b", "0.0.0.0:5000", "wsgi:app"]
 

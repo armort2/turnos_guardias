@@ -1,9 +1,51 @@
+# .gitignore
+# Python
 __pycache__/
-*.pyc
+*.py[cod]
 *.pyo
 *.pyd
-*.log
-.env
+*.egg-info/
+dist/
+build/
 .venv/
 venv/
+.env
+.env.local
+.env.production
+.env.development
+.env.test
+pip-wheel-metadata/
+
+# Tools / linters
+.ruff_cache/
+.mypy_cache/
+.pytest_cache/
+coverage/
+htmlcov/
+
+# Flask / logs
+instance/
+*.log
+logs/
+*.pid
+
+# DB / data (critico)
+*.sqlite
+*.sqlite3
+*.db
+*.dump
+*.bak
+*.sql
+data/
+backup/
+backups/
+uploads/
+
+# OS / Editor
 .DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Docker
+docker-compose.override.yml
