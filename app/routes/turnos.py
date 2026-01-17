@@ -1,3 +1,4 @@
+# app/routes/turnos.py
 from collections import defaultdict
 from datetime import date, datetime, time, timedelta
 
@@ -16,11 +17,10 @@ from ..models import (
     TurnoRegistro,
 )
 from . import main
-from .core import (
+from .core import nombre_dia_es, normalizar_rut
+from .helpers import (
     exigir_acceso_instalacion,
     instalaciones_permitidas_query,
-    nombre_dia_es,
-    normalizar_rut,
     role_required,
 )
 

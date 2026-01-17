@@ -1,15 +1,18 @@
+# app/routes/core.py
 import re
 from datetime import date, datetime, time
-from functools import wraps
 
 import pandas as pd
-from flask import abort, flash, redirect, render_template, request, url_for
-from flask_login import current_user, login_required
+from flask import flash, redirect, render_template, request, url_for
+from flask_login import login_required
 from sqlalchemy import func
 
 from .. import db
 from ..models import ConfiguracionRecargo, Feriado, Guardia, Instalacion, TurnoRegistro
 from . import main
+from .helpers import (
+    role_required,
+)
 
 # -------------------------------------------------------------------
 # Helpers generales
@@ -44,51 +47,6 @@ def nombre_dia_es(fecha: date) -> str:
 
 
 # -------------------------------------------------------------------
-# Seguridad / Roles / Scope por instalación
-# -------------------------------------------------------------------
-
-
-def role_required(*roles):
-    roles = tuple(r.upper() for r in roles)
-
-    def decorator(fn):
-        @wraps(fn)
-        def wrapper(*args, **kwargs):
-            if not current_user.is_authenticated:
-                return redirect(url_for("main.login"))
-
-            if not getattr(current_user, "activo", True):
-                flash("Usuario inactivo.", "danger")
-                return redirect(url_for("main.login"))
-
-            if (getattr(current_user, "rol", "") or "").upper() not in roles:
-                flash("Acceso no autorizado.", "danger")
-                return redirect(url_for("main.index"))
-
-            return fn(*args, **kwargs)
-
-        return wrapper
-
-    return decorator
-
-
-def instalaciones_permitidas_query():
-    if current_user.es_admin():
-        return Instalacion.query
-
-    ids = [i.id for i in (current_user.instalaciones or [])]
-    if not ids:
-        return Instalacion.query.filter(db.text("1=0"))
-
-    return Instalacion.query.filter(Instalacion.id.in_(ids))
-
-
-def exigir_acceso_instalacion(instalacion_id: int):
-    if not current_user.puede_acceder_instalacion(instalacion_id):
-        abort(403)
-
-
-# -------------------------------------------------------------------
 # Rutas generales (no turnos)
 # -------------------------------------------------------------------
 
@@ -109,7 +67,6 @@ def index():
     turnos_no_anulados = TurnoRegistro.query.filter(
         TurnoRegistro.anulado.is_(False)
     ).count()
-
     turnos_anulados = TurnoRegistro.query.filter(
         TurnoRegistro.anulado.is_(True)
     ).count()
@@ -172,7 +129,6 @@ def feriados_listado():
         return redirect(url_for("main.feriados_listado"))
 
     feriados = Feriado.query.order_by(Feriado.fecha.desc()).limit(300).all()
-
     return render_template("feriados_listado.html", feriados=feriados)
 
 

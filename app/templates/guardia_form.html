@@ -1,3 +1,4 @@
+{# app/templates/guardia_form.html #}
 {% extends "base.html" %}
 {% block content %}
 <div class="card shadow-sm">
@@ -34,20 +35,41 @@
           <input class="form-control" name="cargo" value="{{ g.cargo if g else '' }}">
         </div>
 
+        {# ---------------------------------------------------------
+           Empleador (lista fija)
+           --------------------------------------------------------- #}
         <div class="col-md-6">
           <label class="form-label">Empleador</label>
-          <input class="form-control" name="empleador" value="{{ g.empleador if g else '' }}">
+          <select class="form-select" name="empleador" required>
+            <option value="" {% if not g or not g.empleador %}selected{% endif %} disabled>Selecciona empleador…</option>
+
+            {% set empleadores = [
+              "Constructora Valencia SpA",
+              "Constructora Salem SpA",
+              "Proveedora de Servicios Caronte SpA",
+              "Proveedora de Servicios FMO SpA",
+              "Transportes Terratrán SpA"
+            ] %}
+
+            {% for e in empleadores %}
+              <option value="{{ e }}" {% if g and g.empleador == e %}selected{% endif %}>{{ e }}</option>
+            {% endfor %}
+          </select>
           <div class="form-text">Caronte no implica externo; la modalidad manda.</div>
         </div>
 
+        {# ---------------------------------------------------------
+           Obra base (Instalación) desde tabla Instalacion
+           --------------------------------------------------------- #}
         <div class="col-md-6">
           <label class="form-label">Obra base (Instalación)</label>
-          <input class="form-control" name="obra_base" list="instList" value="{{ g.obra_base if g else '' }}">
-          <datalist id="instList">
+          <select class="form-select" name="obra_base" required>
+            <option value="" {% if not g or not g.obra_base %}selected{% endif %} disabled>Selecciona obra base…</option>
             {% for i in instalaciones %}
-              <option value="{{ i.nombre }}"></option>
+              <option value="{{ i.nombre }}" {% if g and g.obra_base == i.nombre %}selected{% endif %}>{{ i.nombre }}</option>
             {% endfor %}
-          </datalist>
+          </select>
+          <div class="form-text">La obra base se usa como referencia; los turnos pueden ser en cualquier instalación permitida.</div>
         </div>
 
         <div class="col-md-4">

@@ -1,3 +1,4 @@
+# app/__init__.py
 from datetime import UTC
 from zoneinfo import ZoneInfo
 

@@ -1,3 +1,4 @@
+{# app/templates/base.html #}
 <!doctype html>
 <html lang="es">
 <head>
@@ -7,7 +8,7 @@
 
   <!-- favicon -->
   <link rel="icon" type="image/png" sizes="32x32"
-      href="{{ url_for('static', filename='img/favicon-256.png') }}?v=20260107-1">
+      href="{{ url_for('static', filename='img/genfavicon-256.png') }}?v=20260107-1">
   <link rel="icon" type="image/x-icon"
       href="{{ url_for('static', filename='img/favicon.ico') }}?v=20260107-1">
 
@@ -64,6 +65,14 @@
              {% if request.path.startswith('/guardias') %}aria-current="page"{% endif %}
              href="/guardias">
             <i class="bi bi-people me-2"></i> Guardias
+          </a>
+        </li>
+
+        <li class="nav-item">
+          <a class="nav-link nav-chip {% if request.path.startswith('/instalaciones') %}active{% endif %}"
+            {% if request.path.startswith('/instalaciones') %}aria-current="page"{% endif %}
+            href="{{ url_for('main.instalaciones_listado') }}">
+            <i class="bi bi-buildings me-2"></i> Obras
           </a>
         </li>
 
