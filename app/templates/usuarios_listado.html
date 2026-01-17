@@ -12,7 +12,7 @@
       <input class="form-control form-control-sm" type="text" name="q" placeholder="Buscar por usuario o rol"
              value="{{ q or '' }}" style="min-width: 240px;">
       <button class="btn btn-sm btn-outline-secondary" type="submit">Buscar</button>
-      <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('usuarios.usuarios_listado') }}">Limpiar</a>
+      <a class="btn btn-outline-secondary w-50" href="/turnos?clear_inst=1">Limpiar</a>
     </form>
 
     <a class="btn btn-sm btn-success" href="{{ url_for('usuarios.usuarios_nuevo') }}">+ Crear Usuario</a>

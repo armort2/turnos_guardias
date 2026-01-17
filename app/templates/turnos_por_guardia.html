@@ -1,17 +1,21 @@
 {% extends "base.html" %}
 {% block content %}
 
-<div class="d-flex justify-content-between align-items-center mb-3">
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
   <h5 class="mb-0">Consulta de turnos por trabajador</h5>
   <a class="btn btn-outline-secondary" href="/turnos">Volver a listado por día</a>
 </div>
 
 <div class="card shadow-sm mb-3">
   <div class="card-body">
-    <form method="get" class="row g-2 align-items-end" id="formConsulta">
+    <form method="get" class="row g-3" id="formConsulta">
 
-      <div class="col-md-5">
-        <label class="form-label small text-muted">Obra / Instalación</label>
+      {# =========================
+         FILA 1: selects + acciones
+         ========================= #}
+
+      <div class="col-12 col-lg-4">
+        <label class="form-label small text-muted mb-1">Obra / Instalación</label>
         <select class="form-select" name="instalacion_id" id="instalacionSelect" required>
           <option value="">-- Seleccionar instalación --</option>
           {% for inst in instalaciones %}
@@ -22,31 +26,61 @@
         </select>
       </div>
 
-      <div class="col-md-4">
-        <label class="form-label small text-muted">Trabajador (con turnos en la instalación)</label>
-        <select class="form-select" name="guardia_rut" id="guardiaSelect" {% if not instalacion_id %}disabled{% endif %} required>
+      <div class="col-12 col-lg-5">
+        <label class="form-label small text-muted mb-1">Trabajador (con turnos en la instalación)</label>
+        <select class="form-select"
+                name="guardia_rut"
+                id="guardiaSelect"
+                {% if not instalacion_id %}disabled{% endif %}
+                required>
           <option value="">-- Seleccionar trabajador --</option>
           {# Se llena por JS al elegir instalación #}
         </select>
-        <div class="form-text">Se muestran solo guardias activos con turnos registrados en esa instalación.</div>
+        <div class="form-text">
+          Se muestran solo guardias activos con turnos registrados en esa instalación.
+        </div>
       </div>
 
-      <div class="col-md-3"></div>
+      <div class="col-12 col-lg-3">
+        <label class="form-label small text-muted mb-1 d-none d-lg-block">&nbsp;</label>
+        <div class="d-flex gap-2 align-items-stretch">
+          <button class="btn btn-primary flex-grow-1" id="btnConsultar" type="submit" disabled>
+            Consultar
+          </button>
+          <a class="btn btn-outline-secondary"
+             href="/turnos/por-guardia"
+             title="Reiniciar filtros de la consulta">
+            Limpiar
+          </a>
+        </div>
+      </div>
 
-      <div class="col-md-3">
-        <label class="form-label small text-muted">Desde</label>
-        <input class="form-control" type="date" name="desde"
+      {# =========================
+         FILA 2: fechas
+         ========================= #}
+
+      <div class="col-12 col-lg-3">
+        <label class="form-label small text-muted mb-1">Desde</label>
+        <input class="form-control"
+               type="date"
+               name="desde"
+               id="desdeInput"
                value="{{ resumen.desde.strftime('%Y-%m-%d') if resumen.desde else sugerido_desde.strftime('%Y-%m-%d') }}">
       </div>
 
-      <div class="col-md-3">
-        <label class="form-label small text-muted">Hasta</label>
-        <input class="form-control" type="date" name="hasta"
+      <div class="col-12 col-lg-3">
+        <label class="form-label small text-muted mb-1">Hasta</label>
+        <input class="form-control"
+               type="date"
+               name="hasta"
+               id="hastaInput"
                value="{{ resumen.hasta.strftime('%Y-%m-%d') if resumen.hasta else sugerido_hasta.strftime('%Y-%m-%d') }}">
       </div>
 
-      <div class="col-md-2 d-grid">
-        <button class="btn btn-primary">Consultar</button>
+      <div class="col-12 col-lg-6 d-flex align-items-end">
+        <div class="small text-muted">
+          Consejo operativo: selecciona instalación y trabajador; el sistema cargará automáticamente el primer trabajador disponible.
+        </div>
       </div>
 
     </form>
@@ -182,17 +216,29 @@
 {% endif %}
 
 <script>
+  function setConsultarState() {
+    const instalacionSelect = document.getElementById("instalacionSelect");
+    const guardiaSelect = document.getElementById("guardiaSelect");
+    const btn = document.getElementById("btnConsultar");
+
+    const ok = Boolean(instalacionSelect.value) && Boolean(guardiaSelect.value) && !guardiaSelect.disabled;
+    btn.disabled = !ok;
+  }
+
   async function cargarGuardias(instId, rutSeleccionado) {
     const guardiaSelect = document.getElementById("guardiaSelect");
     guardiaSelect.innerHTML = '<option value="">-- Seleccionar trabajador --</option>';
 
     if (!instId) {
       guardiaSelect.disabled = true;
+      setConsultarState();
       return;
     }
 
     guardiaSelect.disabled = true;
-    const res = await fetch(`/api/guardias-por-instalacion?inst_id=${instId}`);
+    setConsultarState();
+
+    const res = await fetch(`/api/guardias-por-instalacion?inst_id=${encodeURIComponent(instId)}`);
     const data = await res.json();
 
     for (const g of data) {
@@ -203,20 +249,37 @@
       guardiaSelect.appendChild(opt);
     }
 
+    // Auto-selección del primer guardia disponible si no hay uno ya seleccionado
+    if (!guardiaSelect.value) {
+      const firstReal = guardiaSelect.querySelector('option[value]:not([value=""])');
+      if (firstReal) {
+        guardiaSelect.value = firstReal.value;
+      }
+    }
+
     guardiaSelect.disabled = false;
+    setConsultarState();
   }
 
   document.addEventListener("DOMContentLoaded", () => {
     const instalacionSelect = document.getElementById("instalacionSelect");
+    const guardiaSelect = document.getElementById("guardiaSelect");
+
     const instId = instalacionSelect.value;
     const rutSeleccionado = "{{ guardia_rut or '' }}";
 
-    // si ya hay instalación seleccionada (vuelve de consulta), cargamos guardias
+    // Si ya hay instalación seleccionada (vuelve de consulta), cargamos guardias
     cargarGuardias(instId, rutSeleccionado);
 
     instalacionSelect.addEventListener("change", () => {
       cargarGuardias(instalacionSelect.value, "");
     });
+
+    guardiaSelect.addEventListener("change", () => {
+      setConsultarState();
+    });
+
+    setConsultarState();
   });
 </script>
 

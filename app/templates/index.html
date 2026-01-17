@@ -185,8 +185,13 @@
               </a>
             {% endif %}
 
-            {% if current_user.es_admin() %}
-              <a class="btn btn-outline-light border" href="/usuarios">
+            {% if (current_user.rol or "")|upper == "ADMIN" %}
+              <a class="btn btn-outline-light border" href="./feriados">
+                <i class="bi bi-calendar-event me-2"></i>
+                Gestionar feriados
+              </a>
+
+              <a class="btn btn-outline-light border" href="./usuarios">
                 <i class="bi bi-person-gear me-2"></i>
                 Gestión de usuarios
               </a>

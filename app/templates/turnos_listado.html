@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block content %}
 
-<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+<div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
   <h5 class="mb-0">Turnos (vista por día)</h5>
 
   <div class="d-flex gap-2 flex-wrap">
@@ -29,12 +29,119 @@
   </div>
 </div>
 
-<!-- ✅ Filtro por obra (multi) -->
+{# ==========================================================
+   Badge + Mini KPI cuando hay filtro activo
+   - Obras (inst_id_sel)
+   - Fechas (fecha_activa)
+========================================================== #}
+{% set hay_filtro_obras = (inst_id_sel and (inst_id_sel|length) > 0) %}
+{% set hay_filtro_fechas = (fecha_activa is defined and fecha_activa) %}
+
+{% if hay_filtro_obras or hay_filtro_fechas %}
+
+  {% set selected_insts = (instalaciones_filtro or []) | selectattr('id', 'in', inst_id_sel) | list %}
+  {% set total_visible = dias | sum(attribute='total_valorizado') %}
+
+  <div class="card border-0 shadow-sm mb-3">
+    <div class="card-body py-2">
+      <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+
+        <div class="d-flex flex-column gap-1">
+
+          <div class="d-flex align-items-center flex-wrap gap-2">
+
+            {% if hay_filtro_obras %}
+              <span class="badge bg-primary">
+                <i class="bi bi-funnel-fill me-1"></i>
+                Filtro activo: {{ inst_id_sel|length }} obra{{ 's' if inst_id_sel|length != 1 else '' }}
+              </span>
+            {% endif %}
+
+            <span class="badge bg-dark">
+              <i class="bi bi-calendar3 me-1"></i>
+              Rango: {{ desde.strftime("%d-%m-%Y") if desde else "" }} → {{ hasta.strftime("%d-%m-%Y") if hasta else "" }}
+              {% if not hay_filtro_fechas %}
+                <span class="ms-1 opacity-75">(mes actual)</span>
+              {% endif %}
+            </span>
+
+            {% if hay_filtro_obras and selected_insts %}
+              <span class="text-muted small">
+                {% set nombres = selected_insts | map(attribute='nombre') | list %}
+                {% if nombres|length <= 3 %}
+                  {{ nombres|join(", ") }}
+                {% else %}
+                  {{ nombres[:3]|join(", ") }} y {{ nombres|length - 3 }} más
+                {% endif %}
+              </span>
+            {% endif %}
+
+          </div>
+
+          <div class="small text-muted">
+            Total valorizado visible:
+            <b>${{ "{:,}".format(total_visible).replace(",", ".") }}</b>
+          </div>
+        </div>
+
+        {% if hay_filtro_obras %}
+          <a class="btn btn-sm btn-outline-secondary"
+             href="/turnos?clear_inst=1"
+             title="Quitar filtro por obras (se mantiene el rango de fechas)">
+            <i class="bi bi-x-circle me-1"></i>
+            Quitar filtro
+          </a>
+        {% else %}
+          <a class="btn btn-sm btn-outline-secondary"
+             href="/turnos?clear_all=1"
+             title="Volver al mes actual y limpiar filtros">
+            <i class="bi bi-x-circle me-1"></i>
+            Quitar filtro
+          </a>
+        {% endif %}
+
+      </div>
+    </div>
+  </div>
+{% endif %}
+
+<!-- ✅ Filtro por obra + rango de fechas -->
 <div class="card shadow-sm mb-3">
   <div class="card-body">
     <form method="get" action="/turnos" class="row g-2 align-items-end">
-      <div class="col-12 col-lg-8">
-        <label class="form-label small mb-1">Filtrar por obra(s)</label>
+
+      <!-- Rango de fechas (compacto) -->
+      <div class="col-12 col-lg-4">
+        <label class="form-label small mb-1">Desde</label>
+        <input type="date"
+               name="desde"
+               class="form-control"
+               value="{{ (desde.strftime('%Y-%m-%d') if desde else '') }}">
+      </div>
+
+      <div class="col-12 col-lg-4">
+        <label class="form-label small mb-1">Hasta</label>
+        <input type="date"
+               name="hasta"
+               class="form-control"
+               value="{{ (hasta.strftime('%Y-%m-%d') if hasta else '') }}">
+      </div>
+
+      <div class="col-12 col-lg-4">
+        <div class="d-flex gap-2">
+          <button class="btn btn-primary w-50" type="submit">Aplicar</button>
+
+          <a class="btn btn-outline-secondary w-50"
+             href="/turnos?clear_all=1"
+             title="Limpia filtros y vuelve al mes actual">
+            Limpiar
+          </a>
+        </div>
+      </div>
+
+      <!-- Obras -->
+      <div class="col-12">
+        <label class="form-label small mb-1 mt-2">Filtrar por obra(s)</label>
         <select class="form-select" name="inst_id" multiple size="6">
           {% for inst in (instalaciones_filtro or []) %}
             <option value="{{ inst.id }}"
@@ -43,22 +150,13 @@
             </option>
           {% endfor %}
         </select>
+
         <div class="form-text">
           Tip: mantén presionado Ctrl (Windows/Linux) o ⌘ (Mac) para seleccionar varias.
-          Si no seleccionas ninguna, se muestra todo tu scope.
+          Si no seleccionas ninguna, se muestra todo tu scope dentro del rango.
         </div>
       </div>
 
-      <div class="col-12 col-lg-4">
-        <div class="d-flex gap-2">
-          <button class="btn btn-primary w-50" type="submit">
-            Aplicar
-          </button>
-          <a class="btn btn-outline-secondary w-50" href="/turnos">
-            Limpiar
-          </a>
-        </div>
-      </div>
     </form>
   </div>
 </div>

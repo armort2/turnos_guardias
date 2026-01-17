@@ -1,7 +1,7 @@
 from datetime import UTC, datetime
 from urllib.parse import urlparse
 
-from flask import flash, redirect, render_template, request, url_for
+from flask import flash, redirect, render_template, request, session, url_for
 from flask_login import current_user, login_required, login_user, logout_user
 
 from .. import db
@@ -116,4 +116,5 @@ def logout():
     audit_login("LOGOUT", user_id=current_user.id, detalle="Cierre de sesión")
     logout_user()
     flash("Sesión cerrada.", "info")
+    session.pop("turnos_inst_id_sel", None)
     return redirect(url_for("main.login"))

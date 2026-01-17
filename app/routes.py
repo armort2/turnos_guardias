@@ -1,13 +1,25 @@
+import re
 from collections import defaultdict
 from datetime import date, datetime, time, timedelta
+from functools import wraps
 
-from flask import flash, jsonify, redirect, render_template, request, session, url_for
+import pandas as pd
+from flask import (
+    Blueprint,
+    abort,
+    flash,
+    jsonify,
+    redirect,
+    render_template,
+    request,
+    url_for,
+)
 from flask_login import current_user, login_required
 from sqlalchemy import case, func
 from sqlalchemy.orm import selectinload
 
-from .. import db
-from ..models import (
+from . import db
+from .models import (
     ConfiguracionRecargo,
     Feriado,
     Guardia,
@@ -15,23 +27,52 @@ from ..models import (
     TurnoComentario,
     TurnoRegistro,
 )
-from . import main
-from .core import (
-    exigir_acceso_instalacion,
-    instalaciones_permitidas_query,
-    nombre_dia_es,
-    normalizar_rut,
-    role_required,
-)
+
+main = Blueprint("main", __name__)
+
 
 # -------------------------------------------------------------------
-# Helpers de cálculo (feriados / recargos)
+# Helpers generales
 # -------------------------------------------------------------------
+
+
+def normalizar_rut(rut: str) -> str:
+    """
+    Normaliza un RUT a formato '12345678-9' o '12345678-K'.
+    Elimina puntos/guiones y mantiene DV en mayúscula.
+    """
+    if not rut:
+        return ""
+    r = rut.strip().upper()
+    r = re.sub(r"[^0-9K]", "", r)
+    if len(r) < 2:
+        return rut.strip()
+    cuerpo, dv = r[:-1], r[-1]
+    try:
+        return f"{int(cuerpo)}-{dv}"
+    except ValueError:
+        return f"{cuerpo}-{dv}"
+
+
+def nombre_dia_es(fecha: date) -> str:
+    dias = {
+        0: "Lunes",
+        1: "Martes",
+        2: "Miércoles",
+        3: "Jueves",
+        4: "Viernes",
+        5: "Sábado",
+        6: "Domingo",
+    }
+    return dias.get(fecha.weekday(), "")
 
 
 def minutos_solapados(
     a_ini: datetime, a_fin: datetime, b_ini: datetime, b_fin: datetime
 ) -> int:
+    """
+    Calcula minutos de solape entre intervalos [a_ini, a_fin) y [b_ini, b_fin).
+    """
     ini = max(a_ini, b_ini)
     fin = min(a_fin, b_fin)
     if fin <= ini:
@@ -40,6 +81,10 @@ def minutos_solapados(
 
 
 def calcular_minutos_feriado(inicio_dt: datetime, fin_dt: datetime) -> int:
+    """
+    Suma minutos del turno que caen dentro de días marcados como feriado
+    (considerando ventana 00:00 a 24:00 por cada fecha).
+    """
     total = 0
     d = inicio_dt.date()
     while d <= fin_dt.date():
@@ -53,6 +98,12 @@ def calcular_minutos_feriado(inicio_dt: datetime, fin_dt: datetime) -> int:
 
 
 def obtener_info_recargo_feriado(inicio_dt: datetime, fin_dt: datetime):
+    """
+    Retorna información trazable del/los feriado(s) tocados por el turno.
+    - minutos_feriado_total: suma total de minutos en días feriados
+    - aplicado: el feriado con mayor % (si empata, prioriza IRRENUNCIABLE)
+    - detalle: string breve con desglose por fecha
+    """
     items = []
     minutos_total = 0
     d = inicio_dt.date()
@@ -115,8 +166,32 @@ def obtener_info_recargo_feriado(inicio_dt: datetime, fin_dt: datetime):
 
 
 # -------------------------------------------------------------------
-# Reglas de negocio: adicionalidad, base y recargo
+# Seguridad / Roles / Scope por instalación
 # -------------------------------------------------------------------
+
+
+def role_required(*roles):
+    roles = tuple(r.upper() for r in roles)
+
+    def decorator(fn):
+        @wraps(fn)
+        def wrapper(*args, **kwargs):
+            if not current_user.is_authenticated:
+                return redirect(url_for("main.login"))
+
+            if not getattr(current_user, "activo", True):
+                flash("Usuario inactivo.", "danger")
+                return redirect(url_for("main.login"))
+
+            if (getattr(current_user, "rol", "") or "").upper() not in roles:
+                flash("Acceso no autorizado.", "danger")
+                return redirect(url_for("main.index"))
+
+            return fn(*args, **kwargs)
+
+        return wrapper
+
+    return decorator
 
 
 GUARDIAS_SIEMPRE_VALORIZAR = {
@@ -124,11 +199,43 @@ GUARDIAS_SIEMPRE_VALORIZAR = {
 }
 
 
+def instalaciones_permitidas_query():
+    """
+    Devuelve un query de Instalacion limitado por scope:
+    - ADMIN: todas
+    - OPERADOR/REVISOR: solo las asignadas
+    """
+    if current_user.es_admin():
+        return Instalacion.query
+
+    ids = [i.id for i in (current_user.instalaciones or [])]
+    if not ids:
+        return Instalacion.query.filter(db.text("1=0"))
+
+    return Instalacion.query.filter(Instalacion.id.in_(ids))
+
+
+def exigir_acceso_instalacion(instalacion_id: int):
+    """
+    Bloquea acceso si la instalación no está en el scope (excepto ADMIN).
+    """
+    if not current_user.puede_acceder_instalacion(instalacion_id):
+        abort(403)
+
+
+# -------------------------------------------------------------------
+# Reglas de negocio: adicionalidad, base y recargo
+# -------------------------------------------------------------------
+
+
 def es_turno_adicional(guardia: Guardia, inicio_dt: datetime, fin_dt: datetime) -> bool:
     if guardia.rut in GUARDIAS_SIEMPRE_VALORIZAR:
         return True
 
-    if guardia.modalidad in ("EXT", "PT"):
+    if guardia.modalidad == "EXT":
+        return True
+
+    if guardia.modalidad == "PT":
         return True
 
     min_fer = calcular_minutos_feriado(inicio_dt, fin_dt)
@@ -152,6 +259,19 @@ def monto_base_turno(guardia: Guardia) -> int:
         return 30000
 
     return 33000
+
+
+def obtener_porcentaje_recargo_feriado(inicio_dt: datetime, fin_dt: datetime) -> int:
+    max_pct = 0
+    d = inicio_dt.date()
+    while d <= fin_dt.date():
+        fer = Feriado.query.get(d)
+        if fer:
+            cfg = ConfiguracionRecargo.query.filter_by(tipo_feriado=fer.tipo).first()
+            if cfg and cfg.porcentaje is not None:
+                max_pct = max(max_pct, int(cfg.porcentaje))
+        d += timedelta(days=1)
+    return max_pct
 
 
 def recalcular_turno(
@@ -203,28 +323,118 @@ def recalcular_turno(
 
 
 # -------------------------------------------------------------------
-# Helpers: filtro de fechas (mes actual por defecto)
+# Rutas principales
 # -------------------------------------------------------------------
 
 
-def _primer_y_ultimo_dia_mes(hoy: date) -> tuple[date, date]:
-    primero = date(hoy.year, hoy.month, 1)
-    if hoy.month == 12:
-        primero_sig = date(hoy.year + 1, 1, 1)
-    else:
-        primero_sig = date(hoy.year, hoy.month + 1, 1)
-    ultimo = primero_sig - timedelta(days=1)
-    return primero, ultimo
+@main.get("/")
+def index():
+    stats = {
+        "guardias": Guardia.query.count(),
+        "instalaciones": Instalacion.query.count(),
+        "turnos": TurnoRegistro.query.count(),
+        "feriados": Feriado.query.count(),
+    }
+    return render_template("index.html", stats=stats)
 
 
-def _parse_yyyy_mm_dd(s: str) -> date | None:
-    s = (s or "").strip()
-    if not s:
-        return None
+# -------------------------------------------------------------------
+# Importación masiva de guardias (Excel)
+# -------------------------------------------------------------------
+
+
+@main.route("/import-guardias", methods=["GET", "POST"])
+@login_required
+@role_required("ADMIN", "OPERADOR")
+def import_guardias():
+    if request.method == "GET":
+        return render_template("import_guardias.html")
+
+    f = request.files.get("file")
+    if not f:
+        flash("No se adjuntó archivo.", "danger")
+        return redirect(url_for("main.import_guardias"))
+
     try:
-        return datetime.strptime(s, "%Y-%m-%d").date()
-    except Exception:
-        return None
+        df = pd.read_excel(f, engine="openpyxl")
+    except Exception as e:
+        flash(f"Error leyendo Excel: {e}", "danger")
+        return redirect(url_for("main.import_guardias"))
+
+    cols = {c.strip(): c for c in df.columns}
+    required = [
+        "RUT",
+        "Ap. Paterno",
+        "Ap. Materno",
+        "Nombres",
+        "Labor a realizar",
+        "Nombre Obra",
+        "Nombre Empleador",
+    ]
+    faltantes = [c for c in required if c not in cols]
+    if faltantes:
+        flash(f"Faltan columnas: {', '.join(faltantes)}", "danger")
+        return redirect(url_for("main.import_guardias"))
+
+    creados = 0
+    actualizados = 0
+    instalaciones_creadas = 0
+
+    for _, row in df.iterrows():
+        rut = normalizar_rut(str(row[cols["RUT"]]).strip())
+        if not rut or rut.lower() == "nan":
+            continue
+
+        ap_p = str(row[cols["Ap. Paterno"]]).strip()
+        ap_m = str(row[cols["Ap. Materno"]]).strip()
+        nom = str(row[cols["Nombres"]]).strip()
+        cargo = str(row[cols["Labor a realizar"]]).strip()
+        obra = str(row[cols["Nombre Obra"]]).strip()
+        empleador = str(row[cols["Nombre Empleador"]]).strip()
+
+        inst = Instalacion.query.filter_by(nombre=obra).first()
+        if not inst:
+            db.session.add(Instalacion(nombre=obra))
+            instalaciones_creadas += 1
+
+        g = Guardia.query.get(rut)
+
+        modalidad_sugerida = "EXT" if "EXTERNO" in empleador.upper() else "JC"
+
+        if not g:
+            g = Guardia(
+                rut=rut,
+                ap_paterno=ap_p,
+                ap_materno=ap_m if ap_m.lower() != "nan" else "",
+                nombres=nom,
+                cargo=cargo,
+                empleador=empleador,
+                obra_base=obra,
+                modalidad=modalidad_sugerida,
+                activo=True,
+            )
+            db.session.add(g)
+            creados += 1
+        else:
+            g.ap_paterno = ap_p
+            g.ap_materno = ap_m if ap_m.lower() != "nan" else ""
+            g.nombres = nom
+            g.cargo = cargo
+            g.empleador = empleador
+            g.obra_base = obra
+
+            if not getattr(g, "modalidad", None):
+                g.modalidad = modalidad_sugerida
+
+            actualizados += 1
+
+    db.session.commit()
+    flash(
+        f"Importación OK. Guardias creados: {creados}, actualizados: {actualizados}. "
+        f"Instalaciones nuevas: {instalaciones_creadas}.",
+        "success",
+    )
+    return redirect(url_for("main.index"))
 
 
 # -------------------------------------------------------------------
@@ -375,133 +585,21 @@ def nuevo_turno():
 @main.get("/turnos")
 @login_required
 def turnos_listado():
-    # -----------------------------------------------------------------
-    # Limpieza total (obras + fechas) sin discusión
-    # -----------------------------------------------------------------
-    if request.args.get("clear_all") == "1":
-        session.pop("turnos_inst_id_sel", None)
-        session.pop("turnos_desde", None)
-        session.pop("turnos_hasta", None)
-        return redirect(url_for("main.turnos_listado"))
-
-    # -----------------------------------------------------------------
-    # Scope por instalación (permisos)
-    # -----------------------------------------------------------------
     if current_user.es_admin():
-        inst_ids_scope = None
-        instalaciones_filtro = Instalacion.query.order_by(
-            Instalacion.nombre.asc()
-        ).all()
+        inst_ids = None
     else:
-        inst_ids_scope = [i.id for i in (current_user.instalaciones or [])]
-        if not inst_ids_scope:
+        inst_ids = [i.id for i in (current_user.instalaciones or [])]
+        if not inst_ids:
             return render_template(
-                "turnos_listado.html",
-                dias=[],
-                guardias_map={},
-                instalaciones_map={},
-                instalaciones_filtro=[],
-                inst_id_sel=[],
-                desde=None,
-                hasta=None,
-                default_desde=None,
-                default_hasta=None,
-                fecha_activa=False,
+                "turnos_listado.html", dias=[], guardias_map={}, instalaciones_map={}
             )
-        instalaciones_filtro = (
-            Instalacion.query.filter(Instalacion.id.in_(inst_ids_scope))
-            .order_by(Instalacion.nombre.asc())
-            .all()
-        )
 
-    # -----------------------------------------------------------------
-    # Filtro por obra (multi-select) persistente en sesión
-    # - Si viene en querystring: se usa y se guarda en sesión
-    # - Si NO viene: se recupera desde sesión (si existe)
-    # - Si viene "clear_inst=1": se limpia sesión y no aplica filtro
-    # -----------------------------------------------------------------
-    if request.args.get("clear_inst") == "1":
-        session.pop("turnos_inst_id_sel", None)
-        inst_id_sel = []
-    else:
-        inst_id_sel = request.args.getlist("inst_id", type=int)
-        if inst_id_sel:
-            session["turnos_inst_id_sel"] = inst_id_sel
-        else:
-            inst_id_sel = session.get("turnos_inst_id_sel", []) or []
-
-    # Normalizar contra scope (evita que se “cuele” una obra fuera de permisos)
-    if inst_id_sel:
-        if inst_ids_scope is not None:
-            inst_id_sel = [i for i in inst_id_sel if i in inst_ids_scope]
-            session["turnos_inst_id_sel"] = inst_id_sel
-        if not inst_id_sel:
-            session.pop("turnos_inst_id_sel", None)
-
-    # -----------------------------------------------------------------
-    # Filtro por rango de fechas (default: mes actual) persistente en sesión
-    # - Si vienen desde/hasta: se guardan en sesión
-    # - Si NO vienen: se recuperan desde sesión (si existe)
-    # - Si NO hay sesión: default mes actual
-    # -----------------------------------------------------------------
-    hoy = date.today()
-    default_desde, default_hasta = _primer_y_ultimo_dia_mes(hoy)
-
-    if request.args.get("clear_fechas") == "1":
-        session.pop("turnos_desde", None)
-        session.pop("turnos_hasta", None)
-        desde = default_desde
-        hasta = default_hasta
-    else:
-        desde_str = (request.args.get("desde") or "").strip()
-        hasta_str = (request.args.get("hasta") or "").strip()
-
-        if desde_str or hasta_str:
-            # Si el usuario mandó algo, parseamos y guardamos lo que sea válido
-            d = _parse_yyyy_mm_dd(desde_str) or default_desde
-            h = _parse_yyyy_mm_dd(hasta_str) or default_hasta
-            session["turnos_desde"] = d.strftime("%Y-%m-%d")
-            session["turnos_hasta"] = h.strftime("%Y-%m-%d")
-            desde = d
-            hasta = h
-        else:
-            # Si no mandó nada, intentamos recuperar sesión
-            sd = _parse_yyyy_mm_dd(session.get("turnos_desde", "") or "")
-            sh = _parse_yyyy_mm_dd(session.get("turnos_hasta", "") or "")
-            desde = sd or default_desde
-            hasta = sh or default_hasta
-
-    # Normalización: si vienen invertidas, las damos vuelta
-    if hasta < desde:
-        desde, hasta = hasta, desde
-        session["turnos_desde"] = desde.strftime("%Y-%m-%d")
-        session["turnos_hasta"] = hasta.strftime("%Y-%m-%d")
-
-    dt_desde = datetime.combine(desde, time(0, 0))
-    dt_hasta_excl = datetime.combine(hasta + timedelta(days=1), time(0, 0))
-
-    # True si el usuario no está viendo el rango "por defecto"
-    fecha_activa = not (desde == default_desde and hasta == default_hasta)
-
-    # -----------------------------------------------------------------
-    # Query base
-    # -----------------------------------------------------------------
     q = TurnoRegistro.query.options(
         selectinload(TurnoRegistro.comentarios).selectinload(TurnoComentario.autor)
     ).filter(TurnoRegistro.anulado.is_(False))
 
-    # Scope por instalación (si no es admin)
-    if inst_ids_scope is not None:
-        q = q.filter(TurnoRegistro.instalacion_id.in_(inst_ids_scope))
-
-    # Subfiltro por obra seleccionada
-    if inst_id_sel:
-        q = q.filter(TurnoRegistro.instalacion_id.in_(inst_id_sel))
-
-    # Filtro por fechas (mes actual por defecto)
-    q = q.filter(TurnoRegistro.inicio_dt >= dt_desde).filter(
-        TurnoRegistro.inicio_dt < dt_hasta_excl
-    )
+    if inst_ids is not None:
+        q = q.filter(TurnoRegistro.instalacion_id.in_(inst_ids))
 
     turnos = (
         q.order_by(TurnoRegistro.inicio_dt.asc(), TurnoRegistro.id.asc())
@@ -553,13 +651,6 @@ def turnos_listado():
         dias=dias,
         guardias_map=guardias_map,
         instalaciones_map=instalaciones_map,
-        instalaciones_filtro=instalaciones_filtro,
-        inst_id_sel=inst_id_sel,
-        desde=desde,
-        hasta=hasta,
-        default_desde=default_desde,
-        default_hasta=default_hasta,
-        fecha_activa=fecha_activa,
     )
 
 
@@ -869,6 +960,252 @@ def turnos_por_guardia():
         sugerido_desde=sugerido_desde,
         sugerido_hasta=sugerido_hasta,
     )
+
+
+# -------------------------------------------------------------------
+# Gestión de recargos por tipo de feriado
+# -------------------------------------------------------------------
+
+
+@main.route("/config/recargos", methods=["GET", "POST"])
+@login_required
+@role_required("ADMIN")
+def config_recargos():
+    tipos = ["NORMAL", "IRRENUNCIABLE"]
+
+    if request.method == "POST":
+        for tipo in tipos:
+            pct_str = (request.form.get(f"pct_{tipo}") or "").strip()
+            try:
+                pct = int(pct_str)
+            except Exception:
+                pct = 0
+
+            cfg = ConfiguracionRecargo.query.filter_by(tipo_feriado=tipo).first()
+            if not cfg:
+                cfg = ConfiguracionRecargo(tipo_feriado=tipo, porcentaje=pct)
+                db.session.add(cfg)
+            else:
+                cfg.porcentaje = pct
+
+        db.session.commit()
+        flash("Configuración de recargos guardada correctamente.", "success")
+        return redirect(url_for("main.config_recargos"))
+
+    existentes = {c.tipo_feriado: c for c in ConfiguracionRecargo.query.all()}
+    data = []
+    for tipo in tipos:
+        data.append(
+            {
+                "tipo": tipo,
+                "pct": (
+                    int(existentes[tipo].porcentaje)
+                    if tipo in existentes and existentes[tipo].porcentaje is not None
+                    else 0
+                ),
+            }
+        )
+
+    return render_template("config_recargos.html", data=data)
+
+
+@main.route("/feriados", methods=["GET", "POST"])
+@login_required
+@role_required("ADMIN")
+def feriados_listado():
+    if request.method == "POST":
+        fecha_str = (request.form.get("fecha") or "").strip()
+        tipo = (request.form.get("tipo") or "NORMAL").strip().upper()
+        descripcion = (request.form.get("descripcion") or "").strip()
+
+        try:
+            f = datetime.strptime(fecha_str, "%Y-%m-%d").date()
+        except Exception:
+            flash("Fecha inválida.", "danger")
+            return redirect(url_for("main.feriados_listado"))
+
+        if tipo not in ("NORMAL", "IRRENUNCIABLE"):
+            flash("Tipo inválido. Usa NORMAL o IRRENUNCIABLE.", "danger")
+            return redirect(url_for("main.feriados_listado"))
+
+        fer = Feriado.query.get(f)
+        if not fer:
+            fer = Feriado(fecha=f, tipo=tipo, descripcion=descripcion)
+            db.session.add(fer)
+        else:
+            fer.tipo = tipo
+            fer.descripcion = descripcion
+
+        db.session.commit()
+        flash("Feriado guardado correctamente.", "success")
+        return redirect(url_for("main.feriados_listado"))
+
+    feriados = Feriado.query.order_by(Feriado.fecha.desc()).limit(300).all()
+    return render_template("feriados_listado.html", feriados=feriados)
+
+
+def feriados_listado_en_turnos():
+    return feriados_listado()
+
+
+@main.post("/feriados/<fecha>/eliminar")
+@login_required
+@role_required("ADMIN")
+def feriado_eliminar(fecha):
+    try:
+        f = datetime.strptime(fecha, "%Y-%m-%d").date()
+    except Exception:
+        flash("Fecha inválida.", "danger")
+        return redirect(url_for("main.feriados_listado"))
+
+    fer = Feriado.query.get_or_404(f)
+    db.session.delete(fer)
+    db.session.commit()
+    flash("Feriado eliminado.", "warning")
+    return redirect(url_for("main.feriados_listado"))
+
+
+# -------------------------------------------------------------------
+# Guardias: listado, crear, editar
+# -------------------------------------------------------------------
+
+
+@main.get("/guardias")
+@login_required
+@role_required("ADMIN", "OPERADOR", "REVISOR")
+def guardias_listado():
+    q = (request.args.get("q") or "").strip()
+
+    query = Guardia.query
+    if q:
+        query = query.filter(
+            (Guardia.rut.ilike(f"%{q}%"))
+            | (Guardia.ap_paterno.ilike(f"%{q}%"))
+            | (Guardia.ap_materno.ilike(f"%{q}%"))
+            | (Guardia.nombres.ilike(f"%{q}%"))
+            | (Guardia.empleador.ilike(f"%{q}%"))
+            | (Guardia.obra_base.ilike(f"%{q}%"))
+        )
+
+    guardias = (
+        query.order_by(Guardia.ap_paterno.asc(), Guardia.nombres.asc()).limit(200).all()
+    )
+    return render_template("guardias_listado.html", guardias=guardias, q=q)
+
+
+@main.route("/guardias/nuevo", methods=["GET", "POST"])
+@login_required
+@role_required("ADMIN", "OPERADOR")
+def guardia_nuevo():
+    instalaciones = (
+        instalaciones_permitidas_query().order_by(Instalacion.nombre.asc()).all()
+    )
+
+    if request.method == "GET":
+        return render_template(
+            "guardia_form.html", modo="nuevo", instalaciones=instalaciones, g=None
+        )
+
+    rut = normalizar_rut(request.form.get("rut", ""))
+    ap_paterno = (request.form.get("ap_paterno") or "").strip()
+    ap_materno = (request.form.get("ap_materno") or "").strip()
+    nombres = (request.form.get("nombres") or "").strip()
+    cargo = (request.form.get("cargo") or "").strip()
+    empleador = (request.form.get("empleador") or "").strip()
+    obra_base = (request.form.get("obra_base") or "").strip()
+    modalidad = (request.form.get("modalidad") or "JC").strip().upper()
+    activo = True if request.form.get("activo") == "on" else False
+
+    if not rut or len(rut) < 3:
+        flash("RUT inválido.", "danger")
+        return redirect(url_for("main.guardia_nuevo"))
+
+    if not ap_paterno or not nombres:
+        flash("Debe indicar al menos Ap. Paterno y Nombres.", "danger")
+        return redirect(url_for("main.guardia_nuevo"))
+
+    if modalidad not in ("JC", "PT", "EXT"):
+        flash("Modalidad inválida.", "danger")
+        return redirect(url_for("main.guardia_nuevo"))
+
+    if Guardia.query.get(rut):
+        flash(
+            "Ese RUT ya existe. Puedes editar el guardia desde el listado.", "warning"
+        )
+        return redirect(url_for("main.guardias_listado", q=rut))
+
+    if obra_base:
+        inst = Instalacion.query.filter_by(nombre=obra_base).first()
+        if not inst:
+            db.session.add(Instalacion(nombre=obra_base))
+
+    g = Guardia(
+        rut=rut,
+        ap_paterno=ap_paterno,
+        ap_materno=ap_materno,
+        nombres=nombres,
+        cargo=cargo,
+        empleador=empleador,
+        obra_base=obra_base,
+        modalidad=modalidad,
+        activo=activo,
+    )
+    db.session.add(g)
+    db.session.commit()
+
+    flash("Guardia creado correctamente.", "success")
+    return redirect(url_for("main.guardias_listado"))
+
+
+@main.route("/guardias/<rut>/editar", methods=["GET", "POST"])
+@login_required
+@role_required("ADMIN", "OPERADOR")
+def guardia_editar(rut):
+    rut_n = normalizar_rut(rut)
+    g = Guardia.query.get_or_404(rut_n)
+    instalaciones = (
+        instalaciones_permitidas_query().order_by(Instalacion.nombre.asc()).all()
+    )
+
+    if request.method == "GET":
+        return render_template(
+            "guardia_form.html", modo="editar", instalaciones=instalaciones, g=g
+        )
+
+    ap_paterno = (request.form.get("ap_paterno") or "").strip()
+    ap_materno = (request.form.get("ap_materno") or "").strip()
+    nombres = (request.form.get("nombres") or "").strip()
+    cargo = (request.form.get("cargo") or "").strip()
+    empleador = (request.form.get("empleador") or "").strip()
+    obra_base = (request.form.get("obra_base") or "").strip()
+    modalidad = (request.form.get("modalidad") or "JC").strip().upper()
+    activo = True if request.form.get("activo") == "on" else False
+
+    if not ap_paterno or not nombres:
+        flash("Debe indicar al menos Ap. Paterno y Nombres.", "danger")
+        return redirect(url_for("main.guardia_editar", rut=g.rut))
+
+    if modalidad not in ("JC", "PT", "EXT"):
+        flash("Modalidad inválida.", "danger")
+        return redirect(url_for("main.guardia_editar", rut=g.rut))
+
+    g.ap_paterno = ap_paterno
+    g.ap_materno = ap_materno
+    g.nombres = nombres
+    g.cargo = cargo
+    g.empleador = empleador
+    g.obra_base = obra_base
+    g.modalidad = modalidad
+    g.activo = activo
+
+    if obra_base:
+        inst = Instalacion.query.filter_by(nombre=obra_base).first()
+        if not inst:
+            db.session.add(Instalacion(nombre=obra_base))
+
+    db.session.commit()
+    flash("Guardia actualizado correctamente.", "success")
+    return redirect(url_for("main.guardias_listado", q=g.rut))
 
 
 # -------------------------------------------------------------------

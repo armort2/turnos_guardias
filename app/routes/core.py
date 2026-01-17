@@ -8,7 +8,7 @@ from flask_login import current_user, login_required
 from sqlalchemy import func
 
 from .. import db
-from ..models import Feriado, Guardia, Instalacion, TurnoRegistro
+from ..models import ConfiguracionRecargo, Feriado, Guardia, Instalacion, TurnoRegistro
 from . import main
 
 # -------------------------------------------------------------------
@@ -138,6 +138,101 @@ def index():
     }
 
     return render_template("index.html", stats=stats)
+
+
+@main.route("/feriados", methods=["GET", "POST"])
+@login_required
+@role_required("ADMIN")
+def feriados_listado():
+    if request.method == "POST":
+        fecha_str = (request.form.get("fecha") or "").strip()
+        tipo = (request.form.get("tipo") or "NORMAL").strip().upper()
+        descripcion = (request.form.get("descripcion") or "").strip()
+
+        try:
+            fecha = datetime.strptime(fecha_str, "%Y-%m-%d").date()
+        except ValueError:
+            flash("Fecha inválida.", "danger")
+            return redirect(url_for("main.feriados_listado"))
+
+        if tipo not in ("NORMAL", "IRRENUNCIABLE"):
+            flash("Tipo de feriado inválido.", "danger")
+            return redirect(url_for("main.feriados_listado"))
+
+        feriado = Feriado.query.get(fecha)
+        if not feriado:
+            feriado = Feriado(fecha=fecha, tipo=tipo, descripcion=descripcion)
+            db.session.add(feriado)
+        else:
+            feriado.tipo = tipo
+            feriado.descripcion = descripcion
+
+        db.session.commit()
+        flash("Feriado guardado correctamente.", "success")
+        return redirect(url_for("main.feriados_listado"))
+
+    feriados = Feriado.query.order_by(Feriado.fecha.desc()).limit(300).all()
+
+    return render_template("feriados_listado.html", feriados=feriados)
+
+
+@main.post("/feriados/<fecha>/eliminar")
+@login_required
+@role_required("ADMIN")
+def feriado_eliminar(fecha):
+    try:
+        f = datetime.strptime(fecha, "%Y-%m-%d").date()
+    except Exception:
+        flash("Fecha inválida.", "danger")
+        return redirect("./feriados")
+
+    fer = Feriado.query.get_or_404(f)
+    db.session.delete(fer)
+    db.session.commit()
+    flash("Feriado eliminado.", "warning")
+    return redirect("./feriados")
+
+
+@main.route("/config/recargos", methods=["GET", "POST"])
+@login_required
+@role_required("ADMIN")
+def config_recargos():
+    tipos = ["NORMAL", "IRRENUNCIABLE"]
+
+    if request.method == "POST":
+        for tipo in tipos:
+            pct_str = (request.form.get(f"pct_{tipo}") or "").strip()
+            try:
+                pct = int(pct_str)
+            except Exception:
+                pct = 0
+
+            cfg = ConfiguracionRecargo.query.filter_by(tipo_feriado=tipo).first()
+            if not cfg:
+                cfg = ConfiguracionRecargo(tipo_feriado=tipo, porcentaje=pct)
+                db.session.add(cfg)
+            else:
+                cfg.porcentaje = pct
+
+        db.session.commit()
+        flash("Configuración de recargos guardada correctamente.", "success")
+        return redirect(url_for("main.config_recargos"))
+
+    existentes = {c.tipo_feriado: c for c in ConfiguracionRecargo.query.all()}
+    data = []
+    for tipo in tipos:
+        data.append(
+            {
+                "tipo": tipo,
+                "pct": (
+                    int(existentes[tipo].porcentaje)
+                    if tipo in existentes and existentes[tipo].porcentaje is not None
+                    else 0
+                ),
+            }
+        )
+
+    return render_template("config_recargos.html", data=data)
 
 
 # -------------------------------------------------------------------
