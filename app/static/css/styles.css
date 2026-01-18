@@ -33,13 +33,20 @@
   --danger: #ff5b6e;
   --info: #57d0ff;
 
-  /* Navbar */
+  /* Navbar (legacy, se mantiene por compatibilidad) */
   --nav-bg: #0f141a;
   --nav-border: rgba(255,255,255,0.10);
   --nav-link: rgba(255,255,255,0.92);
   --nav-hover-bg: rgba(255,255,255,0.08);
   --nav-active-bg: rgba(217,116,28,0.16);
   --nav-active-border: rgba(217,116,28,0.55);
+
+  /* Topbar RRHH-style */
+  --cs-topbar-bg: #0b3b5e;     /* azul corporativo estilo RRHH */
+  --cs-topbar-text: #ffffff;
+  --cs-topbar-muted: rgba(255,255,255,.78);
+  --cs-topbar-hover: rgba(255,255,255,.12);
+  --cs-topbar-active: rgba(255,255,255,.18);
 
   /* Sombra / radios */
   --shadow: 0 10px 30px rgba(0,0,0,0.35);
@@ -95,14 +102,24 @@ a:hover{ color: var(--primary-2); }
 hr{ border-color: var(--border); opacity: 1; }
 .small, small{ color: var(--muted); }
 
-/* -------------------------
-   Layout helpers
--------------------------- */
+/* =========================================================
+   PARCHE ERP: no tocar padding global de Bootstrap
+   - Evita que .container/.container-fluid impongan paddings globales
+   - El espaciado lo controla el <main>
+   ========================================================= */
 .container, .container-fluid{
+  padding-top: initial;
+  padding-bottom: initial;
+}
+
+main.content{
   padding-top: 18px;
   padding-bottom: 18px;
 }
 
+/* -------------------------
+   Layout helpers
+-------------------------- */
 .page-title{
   display: flex;
   align-items: baseline;
@@ -247,6 +264,20 @@ hr{ border-color: var(--border); opacity: 1; }
   color: var(--text);
 }
 
+.badge-muted{
+  background: rgba(255,255,255,0.10);
+  border: 1px solid rgba(255,255,255,0.18);
+  color: var(--text);
+}
+
+@media (prefers-color-scheme: light){
+  .badge-muted{
+    background: rgba(0,0,0,0.05);
+    border-color: rgba(0,0,0,0.12);
+    color: rgba(0,0,0,0.78);
+  }
+}
+
 .badge-success{ background: rgba(36,195,122,0.18); border: 1px solid rgba(36,195,122,0.35); color: var(--text); }
 .badge-warning{ background: rgba(240,180,75,0.18); border: 1px solid rgba(240,180,75,0.35); color: var(--text); }
 .badge-danger{  background: rgba(255,91,110,0.18); border: 1px solid rgba(255,91,110,0.35); color: var(--text); }
@@ -268,89 +299,162 @@ hr{ border-color: var(--border); opacity: 1; }
 .alert-danger{  border-color: rgba(255,91,110,0.35); }
 .alert-info{    border-color: rgba(87,208,255,0.35); }
 
-/* -------------------------
-   Navbar
--------------------------- */
-.navbar{
-  border-bottom: 1px solid var(--nav-border);
-  background: var(--nav-bg) !important;
-  backdrop-filter: none;
+/* =========================================================
+   TOPBAR estilo RRHH (Guardias) – HOMOLOGADO
+   ========================================================= */
+.topbar{
+  background: var(--cs-topbar-bg);
+  color: var(--cs-topbar-text);
+  border-bottom: 1px solid rgba(255,255,255,.10);
 }
 
-.navbar .navbar-brand{
-  font-weight: 850;
-  letter-spacing: 0.3px;
-  color: #fff !important;
+.topbar-inner{
+  min-height: 56px;                 /* RRHH-like */
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 8px 18px;                /* más compacto */
 }
 
-.navbar .navbar-brand .badge-soft{
-  background: rgba(255,255,255,0.10);
-  border: 1px solid rgba(255,255,255,0.14);
-  color: rgba(255,255,255,0.90);
+.topbar-left{
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 260px;
 }
 
-.navbar .nav-link{
-  color: var(--nav-link) !important;
-  opacity: 1;
-  padding: .55rem .70rem;
-  border-radius: 10px;
-  transition: background .12s ease, color .12s ease, transform .06s ease;
+.topbar-logo{
+  height: 36px;
+  max-height: 36px;
+  width: auto;
+  object-fit: contain;
+  display: block;
 }
 
-.navbar .nav-link:hover{
-  background: var(--nav-hover-bg);
-  color: #fff !important;
+@media (min-width: 992px){
+  .topbar-logo{
+    height: 38px;
+    max-height: 38px;
+  }
 }
 
-.navbar .nav-link.active,
-.navbar .nav-link[aria-current="page"]{
-  background: var(--nav-active-bg);
-  border: 1px solid var(--nav-active-border);
-  color: #fff !important;
+@media (max-width: 576px){
+  .topbar-logo{
+    height: 30px;
+    max-height: 30px;
+  }
 }
 
-.navbar .navbar-toggler{
-  border-color: rgba(255,255,255,0.22);
-}
-.navbar .navbar-toggler:focus{
-  box-shadow: 0 0 0 0.20rem rgba(217,116,28,0.20);
-}
-
-/* -------------------------
-   Navbar: bloque sesión (FIX contraste)
-   (Más específico para ganarle a Bootstrap)
--------------------------- */
-.navbar .navbar-session{
-  padding-left: 12px;
-  margin-left: 8px;
-  border-left: 1px solid rgba(255,255,255,0.12);
-}
-
-.navbar .navbar-session .session-user{
-  color: rgba(255,255,255,0.92) !important;
-  font-size: 0.85rem;
-  letter-spacing: 0.2px;
-}
-
-/* Botón Cerrar sesión: garantizado visible */
-.navbar .navbar-session .btn-logout{
-  background: rgba(255,255,255,0.18) !important;
-  border: 1px solid rgba(255,255,255,0.45) !important;
-  color: #ffffff !important;
+.topbar-text .system-name{
   font-weight: 700;
-  box-shadow: 0 2px 0 rgba(0,0,0,0.25);
+  line-height: 1.1;
+  color: #fff;
 }
 
-.navbar .navbar-session .btn-logout:hover{
-  background: linear-gradient(180deg, rgba(217,116,28,0.98), rgba(184,95,18,0.98)) !important;
-  border-color: rgba(217,116,28,1) !important;
-  color: #111 !important;
+.topbar-text .system-tagline{
+  font-size: .85rem;
+  color: var(--cs-topbar-muted);
+  line-height: 1.2;
+}
+
+.topbar-right{
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+/* NAV LINKS como RRHH (texto, no chips) */
+.nav-links{
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.nav-links a{
+  color: var(--cs-topbar-text);
+  text-decoration: none;
+  font-weight: 500;
+  font-size: 0.9rem;
+  padding: 6px 8px;
+  border-radius: 10px;
+}
+
+.nav-links a:hover{
+  background: var(--cs-topbar-hover);
+}
+
+.nav-links a.active{
+  background: var(--cs-topbar-active);
+}
+
+.nav-sep{
+  color: var(--cs-topbar-muted);
+  padding: 0 4px;
+}
+
+/* Sesión */
+.user-session{
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  white-space: nowrap;
+}
+
+.user-label{
+  font-size: .85rem;
+  color: var(--cs-topbar-muted);
+}
+
+.user-name{
+  font-weight: 700;
+  color: #fff;
+}
+
+.btn-logout{
+  color: var(--cs-topbar-text);
+  text-decoration: none;
+  font-weight: 600;
+  font-size: .85rem;
+  padding: 6px 10px;
+  border: 1px solid rgba(255,255,255,.28);
+  border-radius: 10px;
+}
+
+.btn-logout:hover{
+  background: rgba(255,255,255,.12);
+}
+
+/* Layout main/footer */
+.content{
+  min-height: calc(100vh - 56px - 56px);
 }
 
 /* -------------------------
    Utility
 -------------------------- */
-.section-title{ font-weight: 800; margin-bottom: 8px; }
+.section-header{ margin-bottom: 0; }
+
+.section-title{
+  margin: 0 0 6px 0;
+  font-weight: 800;
+  letter-spacing: 0.2px;
+}
+
+.section-subtitle{
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+
+.section-divider{
+  height: 1px;
+  background: var(--border);
+  margin-top: 12px;
+}
 
 .divider{
   height: 1px;
@@ -359,14 +463,25 @@ hr{ border-color: var(--border); opacity: 1; }
 }
 
 /* -------------------------
-   Footer
+   Footer (homologado)
 -------------------------- */
-.app-footer{
-  color: var(--muted);
+.footer{
+  border-top: 1px solid rgba(0,0,0,.06);
+  background: #fff;
+}
+
+.footer-inner{
+  display:flex;
+  align-items:center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  gap: 12px;
+  color: #666;
   font-size: .9rem;
-  padding: 14px 0 6px;
-  border-top: 1px solid var(--border);
-  margin-top: 18px;
+}
+
+.footer-right{
+  color:#888;
 }
 
 /* -------------------------
@@ -379,52 +494,29 @@ hr{ border-color: var(--border); opacity: 1; }
 }
 
 /* =========================================================
-   FIX: Texto usuario en navbar (evitar que quede negro)
+   FIX: Botones secundarios con bajo contraste (cards)
    ========================================================= */
-
-.navbar .navbar-session .session-user{
-  color: rgba(255,255,255,0.92) !important;
-  opacity: 1 !important;
-  text-shadow: 0 1px 0 rgba(0,0,0,0.35); /* mejora legibilidad en fondos oscuros */
-}
-
-/* Extra: badge del rol (ADMIN) un poquito más legible */
-.navbar .navbar-session .badge.badge-soft{
-  background: rgba(255,255,255,0.14) !important;
-  border-color: rgba(255,255,255,0.22) !important;
-  color: rgba(255,255,255,0.92) !important;
-}
-
-/* =========================================================
-   FIX: Botones secundarios con bajo contraste
-   (Acciones rápidas / fondos claros)
-   ========================================================= */
-
-/* Botones outline en cards claras */
 .card .btn-outline-light,
 .card .btn-outline-secondary{
   background: rgba(255,255,255,0.65);
-  color: #111 !important;                 /* texto oscuro */
+  color: #111 !important;
   border: 1px solid rgba(0,0,0,0.18);
   font-weight: 600;
 }
 
-/* Hover: sutil pero claro */
 .card .btn-outline-light:hover,
 .card .btn-outline-secondary:hover{
-  background: rgba(217,116,28,0.12);      /* ámbar muy suave */
+  background: rgba(217,116,28,0.12);
   border-color: rgba(217,116,28,0.55);
   color: #111 !important;
 }
 
-/* Focus accesible */
 .card .btn-outline-light:focus-visible,
 .card .btn-outline-secondary:focus-visible{
   outline: 2px solid rgba(217,116,28,0.6);
   outline-offset: 2px;
 }
 
-/* Botones realmente deshabilitados */
 .card .btn:disabled,
 .card .btn.disabled{
   background: rgba(0,0,0,0.05) !important;
@@ -435,72 +527,10 @@ hr{ border-color: var(--border); opacity: 1; }
 }
 
 /* =========================================================
-   Navbar chips (botones tipo "Acciones rápidas")
+   NOTA: Se eliminan estilos legacy de "navbar chips"
+   porque ya no usamos navbar Bootstrap para el header.
+   (Dejar esto así reduce ruido y evita conflictos.)
    ========================================================= */
-
-.navbar .navbar-actions{
-  gap: 10px;
-}
-
-.navbar .navbar-actions .nav-item{
-  display: flex;
-  align-items: center;
-}
-
-.navbar .navbar-actions .nav-chip{
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: .45rem .75rem !important;
-  border-radius: 12px;
-  border: 1px solid rgba(255,255,255,0.16);
-  background: rgba(255,255,255,0.08);
-  color: rgba(255,255,255,0.92) !important;
-  font-weight: 650;
-  line-height: 1.1;
-}
-
-.navbar .navbar-actions .nav-chip:hover{
-  background: rgba(255,255,255,0.12);
-  border-color: rgba(255,255,255,0.22);
-  color: #fff !important;
-}
-
-/* Activo */
-.navbar .navbar-actions .nav-chip.active{
-  background: rgba(217,116,28,0.18);
-  border-color: rgba(217,116,28,0.55);
-  color: #fff !important;
-}
-
-/* Variantes sutiles para Reporte/Admin */
-.navbar .navbar-actions .nav-chip-report{
-  background: rgba(87,208,255,0.10);
-  border-color: rgba(87,208,255,0.22);
-}
-
-.navbar .navbar-actions .nav-chip-admin{
-  background: rgba(240,180,75,0.12);
-  border-color: rgba(240,180,75,0.24);
-}
-
-/* Íconos alineados */
-.navbar .navbar-actions .nav-chip i.bi{
-  font-size: 1rem;
-  vertical-align: -0.1em;
-  opacity: 0.95;
-}
-
-/* Mobile: que no queden apretados */
-@media (max-width: 991.98px){
-  .navbar .navbar-actions{
-    padding-top: 10px;
-  }
-  .navbar .navbar-actions .nav-chip{
-    width: 100%;
-    justify-content: flex-start;
-  }
-}
 
 /* =========================================================
    FIN styles.css

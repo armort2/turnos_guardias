@@ -4,181 +4,148 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Turnos Guardias</title>
+
+  <title>
+    Turnos Guardias · Grupo CS
+    {% if self.title() %} · {% block title %}{% endblock %}{% endif %}
+  </title>
 
   <!-- favicon -->
   <link rel="icon" type="image/png" sizes="32x32"
-      href="{{ url_for('static', filename='img/genfavicon-256.png') }}?v=20260107-1">
+        href="{{ url_for('static', filename='img/genfavicon-256.png') }}?v=20260117-1">
   <link rel="icon" type="image/x-icon"
-      href="{{ url_for('static', filename='img/favicon.ico') }}?v=20260107-1">
-
+        href="{{ url_for('static', filename='img/favicon.ico') }}?v=20260117-1">
 
   <!-- Bootstrap CSS -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
 
   <!-- Custom CSS (cache-buster) -->
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}?v=20260102-5">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}?v=20260117-3">
 
-  <!-- Uso de íconos en cualquier template -->
+  <!-- Bootstrap Icons (si las sigues usando en otras vistas) -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+
+  {% block head %}{% endblock %}
 </head>
 
 <body>
+  {# Detecta si estamos en login (pantalla pública) #}
+  {% set endpoint = request.endpoint or "" %}
+  {% set is_login = (endpoint in ["main.login", "main.login_post"]) %}
 
-<nav class="navbar navbar-expand-lg navbar-dark">
-  <div class="container">
+  <header class="topbar">
+    <div class="topbar-inner container-fluid">
 
-    <a class="navbar-brand d-flex align-items-center gap-2" href="{{ url_for('main.index') }}">
-
-      <!-- Logo Grupo CS (recomendado: static/img/logo-grupo-cs.png) -->
-      <span class="d-inline-flex align-items-center justify-content-center bg-white bg-opacity-10 rounded-3 px-2 py-1">
+      <!-- LEFT: Marca -->
+      <div class="topbar-left">
         <img
           src="{{ url_for('static', filename='img/logo-grupo-cs.png') }}"
           alt="Grupo CS"
-          style="height: 48px; width: auto; display:block;">
-      </span>
-
-      <span>Turnos Guardias</span>
-    </a>
-
-    <!-- Botón colapsable (mobile) -->
-    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarMain"
-            aria-controls="navbarMain" aria-expanded="false" aria-label="Toggle navigation">
-      <span class="navbar-toggler-icon"></span>
-    </button>
-
-    <div class="collapse navbar-collapse" id="navbarMain">
-
-      <!-- Menú principal -->
-      <ul class="navbar-nav me-auto mb-2 mb-lg-0 navbar-actions">
-
-        <li class="nav-item">
-          <a class="nav-link nav-chip {% if request.path == url_for('main.index') %}active{% endif %}"
-             {% if request.path == url_for('main.index') %}aria-current="page"{% endif %}
-             href="{{ url_for('main.index') }}">
-            <i class="bi bi-speedometer2 me-2"></i> Inicio
-          </a>
-        </li>
-
-        <li class="nav-item">
-          <a class="nav-link nav-chip {% if request.path.startswith('/guardias') %}active{% endif %}"
-             {% if request.path.startswith('/guardias') %}aria-current="page"{% endif %}
-             href="/guardias">
-            <i class="bi bi-people me-2"></i> Guardias
-          </a>
-        </li>
-
-        <li class="nav-item">
-          <a class="nav-link nav-chip {% if request.path.startswith('/instalaciones') %}active{% endif %}"
-            {% if request.path.startswith('/instalaciones') %}aria-current="page"{% endif %}
-            href="{{ url_for('main.instalaciones_listado') }}">
-            <i class="bi bi-buildings me-2"></i> Obras
-          </a>
-        </li>
-
-        <li class="nav-item">
-          <a class="nav-link nav-chip {% if request.path.startswith(url_for('main.nuevo_turno')) %}active{% endif %}"
-             {% if request.path.startswith(url_for('main.nuevo_turno')) %}aria-current="page"{% endif %}
-             href="{{ url_for('main.nuevo_turno') }}">
-            <i class="bi bi-clock-history me-2"></i> Registrar turno
-          </a>
-        </li>
-
-        <li class="nav-item">
-          <a class="nav-link nav-chip {% if request.path == url_for('main.turnos_listado') %}active{% endif %}"
-             {% if request.path == url_for('main.turnos_listado') %}aria-current="page"{% endif %}
-             href="{{ url_for('main.turnos_listado') }}">
-            <i class="bi bi-list-check me-2"></i> Listado turnos
-          </a>
-        </li>
-
-        <li class="nav-item">
-          <a class="nav-link nav-chip {% if request.path.startswith(url_for('main.turnos_por_guardia')) %}active{% endif %}"
-             {% if request.path.startswith(url_for('main.turnos_por_guardia')) %}aria-current="page"{% endif %}
-             href="{{ url_for('main.turnos_por_guardia') }}">
-            <i class="bi bi-person-lines-fill me-2"></i> Consulta por trabajador
-          </a>
-        </li>
-
-        {% if current_user.is_authenticated and (current_user.rol or "")|upper in ["ADMIN","OPERADOR","REVISOR"] %}
-          <li class="nav-item">
-            <a class="nav-link nav-chip nav-chip-report {% if request.path.startswith(url_for('main.reporte_resumen_turnos')) %}active{% endif %}"
-               {% if request.path.startswith(url_for('main.reporte_resumen_turnos')) %}aria-current="page"{% endif %}
-               href="{{ url_for('main.reporte_resumen_turnos') }}">
-              <i class="bi bi-bar-chart me-2"></i> Resumen turnos
-            </a>
-          </li>
-        {% endif %}
-
-        {% if current_user.is_authenticated and current_user.es_admin() %}
-          <li class="nav-item">
-            <a class="nav-link nav-chip nav-chip-admin {% if request.path.startswith(url_for('usuarios.usuarios_listado')) %}active{% endif %}"
-               {% if request.path.startswith(url_for('usuarios.usuarios_listado')) %}aria-current="page"{% endif %}
-               href="{{ url_for('usuarios.usuarios_listado') }}">
-              <i class="bi bi-person-gear me-2"></i> Gestión de usuarios
-            </a>
-          </li>
-        {% endif %}
-
-      </ul>
-
-      <!-- Área derecha (sesión) -->
-      <div class="d-flex align-items-center gap-2 navbar-session">
-        {% if current_user.is_authenticated %}
-          <span class="badge badge-soft">
-            {{ (current_user.rol or "USUARIO")|upper }}
-          </span>
-
-          <span class="session-user d-none d-lg-inline">
-            {{ current_user.username if current_user.username is defined else "Sesión activa" }}
-          </span>
-
-          <a class="btn btn-sm btn-logout" href="{{ url_for('main.logout') }}">
-            Cerrar sesión
-          </a>
-        {% else %}
-          <a class="btn btn-sm btn-primary" href="{{ url_for('main.login') }}">
-            Iniciar sesión
-          </a>
-        {% endif %}
+          class="topbar-logo"
+        >
+        <div class="topbar-text">
+          <div class="system-name">Turnos Guardias</div>
+          <div class="system-tagline">Control operativo de turnos y trazabilidad</div>
+        </div>
       </div>
 
-    </div>
-  </div>
-</nav>
+      {% if not is_login %}
+        <!-- RIGHT: Navegación + sesión -->
+        <div class="topbar-right">
 
-<main class="container my-4">
+          <nav class="nav-links">
+            <a href="{{ url_for('main.index') }}"
+               class="{% if request.path == url_for('main.index') %}active{% endif %}">
+              Inicio
+            </a>
 
-  {# Flash messages (centralizado) #}
-  {% with messages = get_flashed_messages(with_categories=true) %}
-    {% if messages %}
-      <div class="mb-3">
-        {% for category, msg in messages %}
-          {% set cat = category %}
-          {% if category in ["message"] %}{% set cat = "info" %}{% endif %}
-          {% if category in ["error"] %}{% set cat = "danger" %}{% endif %}
+            <a href="/guardias"
+               class="{% if request.path.startswith('/guardias') %}active{% endif %}">
+              Guardias
+            </a>
 
-          <div class="alert alert-{{ cat }} alert-dismissible fade show" role="alert">
-            {{ msg }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            <a href="{{ url_for('main.instalaciones_listado') }}"
+               class="{% if request.path.startswith('/instalaciones') %}active{% endif %}">
+              Obras
+            </a>
+
+            <a href="{{ url_for('main.turnos_listado') }}"
+               class="{% if request.path.startswith('/turnos') %}active{% endif %}">
+              Turnos
+            </a>
+
+            <a href="{{ url_for('main.turnos_por_guardia') }}"
+               class="{% if request.path.startswith(url_for('main.turnos_por_guardia')) %}active{% endif %}">
+              Consulta por trabajador
+            </a>
+
+            {% if current_user.is_authenticated and (current_user.rol or "")|upper in ["ADMIN","OPERADOR","REVISOR"] %}
+              <a href="{{ url_for('main.reporte_resumen_turnos') }}"
+                 class="{% if request.path.startswith(url_for('main.reporte_resumen_turnos')) %}active{% endif %}">
+                Reportes
+              </a>
+            {% endif %}
+
+            {% if current_user.is_authenticated and current_user.es_admin() %}
+              <span class="nav-sep">|</span>
+              <a href="{{ url_for('usuarios.usuarios_listado') }}"
+                 class="{% if request.path.startswith(url_for('usuarios.usuarios_listado')) %}active{% endif %}">
+                Usuarios
+              </a>
+            {% endif %}
+          </nav>
+
+          <div class="user-session">
+            {% if current_user.is_authenticated %}
+              <span class="user-label">Conectado como</span>
+              <span class="user-name">{{ current_user.username }}</span>
+              <a href="{{ url_for('main.logout') }}" class="btn-logout">Salir</a>
+            {% else %}
+              <a href="{{ url_for('main.login') }}" class="btn-logout">Ingresar</a>
+            {% endif %}
           </div>
-        {% endfor %}
-      </div>
-    {% endif %}
-  {% endwith %}
 
-  {% block content %}{% endblock %}
+        </div>
+      {% endif %}
 
-  <div class="app-footer">
-    <div class="d-flex justify-content-between flex-wrap gap-2">
-      <div>Turnos Guardias · Operación y control</div>
-      <div class="text-muted">v1 · {{ (current_user.rol or "INVITADO")|upper }}</div>
     </div>
-  </div>
+  </header>
 
-</main>
+  <main class="content">
+    <!-- Flash messages dentro del flujo principal -->
+    <div class="container-fluid mt-3">
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          <div class="flash-container">
+            {% for cat, m in messages %}
+              {% set bs = "warning" %}
+              {% if cat in ["success"] %}{% set bs = "success" %}
+              {% elif cat in ["error", "danger"] %}{% set bs = "danger" %}
+              {% elif cat in ["info"] %}{% set bs = "info" %}
+              {% endif %}
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+              <div class="alert alert-{{ bs }} alert-dismissible fade show mb-2" role="alert">
+                {{ m }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+              </div>
+            {% endfor %}
+          </div>
+        {% endif %}
+      {% endwith %}
+    </div>
 
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer class="footer">
+    <div class="container-fluid footer-inner">
+      <span>© {{ 2026 }} Grupo CS · Turnos Guardias</span>
+      <span class="footer-right">Desarrollado por AOE Asesorías</span>
+    </div>
+  </footer>
+
+  <!-- Bootstrap JS Bundle -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  {% block scripts %}{% endblock %}
 </body>
 </html>

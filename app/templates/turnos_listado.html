@@ -1,405 +1,373 @@
+{# /web/app/templates/turnos_listado.html #}
 {% extends "base.html" %}
+
+{% block title %}Turnos · Turnos Guardias · Grupo CS{% endblock %}
+
 {% block content %}
+<div class="container-fluid py-3">
 
-<div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
-  <h5 class="mb-0">Turnos (vista por día)</h5>
+  <div class="d-flex align-items-start justify-content-between gap-3 flex-wrap mb-3">
+    <div class="section-header mb-0">
+      <h1 class="section-title">Turnos (vista por día)</h1>
+      <div class="section-subtitle">Consulta operativa con filtros por rango y obras, y trazabilidad vía comentarios.</div>
+      <div class="section-divider"></div>
+    </div>
 
-  <div class="d-flex gap-2 flex-wrap">
+    <div class="d-flex gap-2 flex-wrap">
+      {% if current_user.is_authenticated and (current_user.rol or "")|upper in ["ADMIN","OPERADOR"] %}
+        <a class="btn btn-primary" href="/turnos/nuevo">+ Registrar turno</a>
 
-    {% if current_user.is_authenticated and (current_user.rol or "")|upper in ["ADMIN","OPERADOR"] %}
-      <a class="btn btn-success" href="/turnos/nuevo">+ Registrar turno</a>
+        <form method="post" action="/turnos/recalcular-pt" class="m-0"
+              onsubmit="return confirm('Esto recalculará TODOS los turnos PT (no anulados) del mes en curso dentro de tu scope. ¿Deseas continuar?');">
+          <button class="btn btn-outline-secondary" type="submit">
+            Recalcular PT (mes actual)
+          </button>
+        </form>
 
-      <!-- ✅ Recalcular PT (mes actual) -->
-      <form method="post" action="/turnos/recalcular-pt" class="m-0"
-            onsubmit="return confirm('Esto recalculará TODOS los turnos PT (no anulados) del mes en curso dentro de tu scope. ¿Deseas continuar?');">
-        <button class="btn btn-outline-warning">
-          Recalcular PT (mes actual)
+        <button class="btn btn-outline-secondary"
+                type="button"
+                data-bs-toggle="collapse"
+                data-bs-target="#ptRango">
+          Recalcular PT por rango
         </button>
-      </form>
-
-      <!-- ✅ Opcional: recalcular PT por rango -->
-      <button class="btn btn-outline-secondary"
-              type="button"
-              data-bs-toggle="collapse"
-              data-bs-target="#ptRango">
-        Recalcular PT por rango
-      </button>
-    {% endif %}
-
+      {% endif %}
+    </div>
   </div>
-</div>
 
-{# ==========================================================
-   Badge + Mini KPI cuando hay filtro activo
-   - Obras (inst_id_sel)
-   - Fechas (fecha_activa)
-========================================================== #}
-{% set hay_filtro_obras = (inst_id_sel and (inst_id_sel|length) > 0) %}
-{% set hay_filtro_fechas = (fecha_activa is defined and fecha_activa) %}
+  {# ==========================================================
+     Badge + Mini KPI cuando hay filtro activo
+  ========================================================== #}
+  {% set hay_filtro_obras = (inst_id_sel and (inst_id_sel|length) > 0) %}
+  {% set hay_filtro_fechas = (fecha_activa is defined and fecha_activa) %}
 
-{% if hay_filtro_obras or hay_filtro_fechas %}
+  {% if hay_filtro_obras or hay_filtro_fechas %}
+    {% set selected_insts = (instalaciones_filtro or []) | selectattr('id', 'in', inst_id_sel) | list %}
+    {% set total_visible = dias | sum(attribute='total_valorizado') %}
 
-  {% set selected_insts = (instalaciones_filtro or []) | selectattr('id', 'in', inst_id_sel) | list %}
-  {% set total_visible = dias | sum(attribute='total_valorizado') %}
+    <div class="card mb-3">
+      <div class="card-body py-2">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
 
-  <div class="card border-0 shadow-sm mb-3">
-    <div class="card-body py-2">
-      <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+          <div class="d-flex flex-column gap-1">
 
-        <div class="d-flex flex-column gap-1">
-
-          <div class="d-flex align-items-center flex-wrap gap-2">
-
-            {% if hay_filtro_obras %}
-              <span class="badge bg-primary">
-                <i class="bi bi-funnel-fill me-1"></i>
-                Filtro activo: {{ inst_id_sel|length }} obra{{ 's' if inst_id_sel|length != 1 else '' }}
-              </span>
-            {% endif %}
-
-            <span class="badge bg-dark">
-              <i class="bi bi-calendar3 me-1"></i>
-              Rango: {{ desde.strftime("%d-%m-%Y") if desde else "" }} → {{ hasta.strftime("%d-%m-%Y") if hasta else "" }}
-              {% if not hay_filtro_fechas %}
-                <span class="ms-1 opacity-75">(mes actual)</span>
+            <div class="d-flex align-items-center flex-wrap gap-2">
+              {% if hay_filtro_obras %}
+                <span class="badge badge-soft">
+                  <i class="bi bi-funnel-fill me-1"></i>
+                  Filtro activo: {{ inst_id_sel|length }} obra{{ 's' if inst_id_sel|length != 1 else '' }}
+                </span>
               {% endif %}
-            </span>
 
-            {% if hay_filtro_obras and selected_insts %}
-              <span class="text-muted small">
-                {% set nombres = selected_insts | map(attribute='nombre') | list %}
-                {% if nombres|length <= 3 %}
-                  {{ nombres|join(", ") }}
-                {% else %}
-                  {{ nombres[:3]|join(", ") }} y {{ nombres|length - 3 }} más
+              <span class="badge badge-soft">
+                <i class="bi bi-calendar3 me-1"></i>
+                Rango: {{ desde.strftime("%d-%m-%Y") if desde else "" }} → {{ hasta.strftime("%d-%m-%Y") if hasta else "" }}
+                {% if not hay_filtro_fechas %}
+                  <span class="ms-1 opacity-75">(mes actual)</span>
                 {% endif %}
               </span>
-            {% endif %}
 
-          </div>
-
-          <div class="small text-muted">
-            Total valorizado visible:
-            <b>${{ "{:,}".format(total_visible).replace(",", ".") }}</b>
-          </div>
-        </div>
-
-        {% if hay_filtro_obras %}
-          <a class="btn btn-sm btn-outline-secondary"
-             href="/turnos?clear_inst=1"
-             title="Quitar filtro por obras (se mantiene el rango de fechas)">
-            <i class="bi bi-x-circle me-1"></i>
-            Quitar filtro
-          </a>
-        {% else %}
-          <a class="btn btn-sm btn-outline-secondary"
-             href="/turnos?clear_all=1"
-             title="Volver al mes actual y limpiar filtros">
-            <i class="bi bi-x-circle me-1"></i>
-            Quitar filtro
-          </a>
-        {% endif %}
-
-      </div>
-    </div>
-  </div>
-{% endif %}
-
-<!-- ✅ Filtro por obra + rango de fechas -->
-<div class="card shadow-sm mb-3">
-  <div class="card-body">
-    <form method="get" action="/turnos" class="row g-2 align-items-end">
-
-      <!-- Rango de fechas (compacto) -->
-      <div class="col-12 col-lg-4">
-        <label class="form-label small mb-1">Desde</label>
-        <input type="date"
-               name="desde"
-               class="form-control"
-               value="{{ (desde.strftime('%Y-%m-%d') if desde else '') }}">
-      </div>
-
-      <div class="col-12 col-lg-4">
-        <label class="form-label small mb-1">Hasta</label>
-        <input type="date"
-               name="hasta"
-               class="form-control"
-               value="{{ (hasta.strftime('%Y-%m-%d') if hasta else '') }}">
-      </div>
-
-      <div class="col-12 col-lg-4">
-        <div class="d-flex gap-2">
-          <button class="btn btn-primary w-50" type="submit">Aplicar</button>
-
-          <a class="btn btn-outline-secondary w-50"
-             href="/turnos?clear_all=1"
-             title="Limpia filtros y vuelve al mes actual">
-            Limpiar
-          </a>
-        </div>
-      </div>
-
-      <!-- Obras -->
-      <div class="col-12">
-        <label class="form-label small mb-1 mt-2">Filtrar por obra(s)</label>
-        <select class="form-select" name="inst_id" multiple size="6">
-          {% for inst in (instalaciones_filtro or []) %}
-            <option value="{{ inst.id }}"
-              {% if inst_id_sel and (inst.id in inst_id_sel) %}selected{% endif %}>
-              {{ inst.nombre }}
-            </option>
-          {% endfor %}
-        </select>
-
-        <div class="form-text">
-          Tip: mantén presionado Ctrl (Windows/Linux) o ⌘ (Mac) para seleccionar varias.
-          Si no seleccionas ninguna, se muestra todo tu scope dentro del rango.
-        </div>
-      </div>
-
-    </form>
-  </div>
-</div>
-
-{% if current_user.is_authenticated and (current_user.rol or "")|upper in ["ADMIN","OPERADOR"] %}
-  <div class="collapse mb-3" id="ptRango">
-    <div class="card border-0 shadow-sm">
-      <div class="card-body">
-        <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
-          <div>
-            <h6 class="mb-1">Recalcular turnos PT por rango</h6>
-            <div class="text-muted small">
-              Útil para corregir una quincena o un período específico sin tocar otros meses.
-            </div>
-          </div>
-        </div>
-
-        <form method="post" action="/turnos/recalcular-pt" class="mt-3"
-              onsubmit="return confirm('Esto recalculará turnos PT (no anulados) dentro del rango indicado y tu scope. ¿Confirmas la operación?');">
-          <div class="row g-2 align-items-end">
-            <div class="col-12 col-md-4">
-              <label class="form-label small mb-1">Desde</label>
-              <input type="date" name="desde" class="form-control" required>
-            </div>
-            <div class="col-12 col-md-4">
-              <label class="form-label small mb-1">Hasta</label>
-              <input type="date" name="hasta" class="form-control" required>
-            </div>
-            <div class="col-12 col-md-4">
-              <button class="btn btn-warning w-100">
-                Ejecutar recalculo PT
-              </button>
-            </div>
-          </div>
-
-          <div class="text-muted small mt-2">
-            Nota: No afecta turnos anulados. Solo recalcula PT.
-          </div>
-        </form>
-      </div>
-    </div>
-  </div>
-{% endif %}
-
-{% for d in dias %}
-<div class="card shadow-sm mb-3">
-  <div class="card-body">
-
-    <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
-      <div>
-        <h6 class="mb-1">
-          {{ d.nombre_dia }} {{ d.fecha.strftime("%d-%m-%Y") }}
-        </h6>
-        <div class="text-muted small">
-          Guardias: <b>{{ d.guardias_unicos }}</b> ·
-          Turnos: <b>{{ d.cantidad_turnos }}</b> ·
-          Valorizados: <b>{{ d.cantidad_valorizados }}</b>
-        </div>
-      </div>
-
-      <div class="text-end">
-        <div class="text-muted small">Total valorizado</div>
-        <div style="font-size: 1.25rem;">
-          <b>${{ "{:,}".format(d.total_valorizado).replace(",", ".") }}</b>
-        </div>
-      </div>
-    </div>
-
-    <hr class="my-3">
-
-    <div class="table-responsive">
-      <table class="table table-sm align-middle mb-0">
-        <thead>
-          <tr>
-            <th>Turno</th>
-            <th>Guardia</th>
-            <th>Modalidad</th>
-            <th>Instalación</th>
-            <th>Inicio</th>
-            <th>Fin</th>
-            <th>Hrs. feriado</th>
-            <th>Recargo feriado</th>
-            <th>Monto</th>
-            <th class="text-nowrap">Acciones</th>
-          </tr>
-        </thead>
-
-        <tbody>
-          {% for t in d.turnos %}
-          {% set g = guardias_map.get(t.guardia_rut) %}
-          {% set i = instalaciones_map.get(t.instalacion_id) %}
-
-          <tr>
-            <td>
-              {% if t.turno_codigo == "DIA" %}
-                <span class="badge bg-info text-dark">DÍA</span>
-              {% else %}
-                <span class="badge bg-dark">NOCHE</span>
-              {% endif %}
-
-              {% if t.es_adicional %}
-                <span class="badge bg-success ms-1">Adicional</span>
-              {% endif %}
-            </td>
-
-            <td>
-              {% if g %}
-                <div><b>{{ g.ap_paterno }} {{ g.ap_materno or "" }} {{ g.nombres }}</b></div>
-                <div class="text-muted small">{{ g.rut }}</div>
-              {% else %}
-                {{ t.guardia_rut }}
-              {% endif %}
-            </td>
-
-            <td>
-              {% if g and g.modalidad %}
-                <span class="badge bg-secondary">{{ g.modalidad }}</span>
-              {% else %}
-                -
-              {% endif %}
-            </td>
-
-            <td>
-              {{ i.nombre if i else t.instalacion_id }}
-            </td>
-
-            <td>{{ t.inicio_dt.strftime("%d-%m-%Y %H:%M") }}</td>
-            <td>{{ t.fin_dt.strftime("%d-%m-%Y %H:%M") }}</td>
-
-            <td>
-              {% set mins = (t.minutos_feriado or 0) %}
-              {% set h = (mins // 60) %}
-              {% set m = (mins % 60) %}
-
-              {% if mins == 0 %}
-                0 h
-              {% elif m == 0 %}
-                {{ h }} h
-              {% else %}
-                {{ h }} h {{ m }} m
-              {% endif %}
-            </td>
-
-            <td>
-              {% if t.minutos_feriado and t.minutos_feriado > 0 %}
-                <div>
-                  <span class="badge bg-warning text-dark"
-                        {% if t.feriado_detalle_calculo %}title="{{ t.feriado_detalle_calculo }}"{% endif %}>
-                    {{ t.feriado_tipo_aplicado }} {{ t.feriado_porcentaje_aplicado }}%
-                  </span>
-                </div>
-                <div class="text-muted small">
-                  {{ t.feriado_descripcion_aplicada or "" }}
-                </div>
-              {% else %}
-                -
-              {% endif %}
-            </td>
-
-            <td>
-              ${{ "{:,}".format(t.monto_total or 0).replace(",", ".") }}
-            </td>
-
-            <td class="text-nowrap">
-
-              {% if current_user.is_authenticated and (current_user.rol or "")|upper in ["ADMIN","OPERADOR"] %}
-                <a class="btn btn-sm btn-outline-primary" href="/turnos/{{ t.id }}/editar">Editar</a>
-              {% endif %}
-
-              {% if current_user.is_authenticated and (current_user.rol or "")|upper in ["ADMIN","OPERADOR","REVISOR"] %}
-                <button class="btn btn-sm btn-outline-secondary"
-                        type="button"
-                        data-bs-toggle="collapse"
-                        data-bs-target="#cmt{{ t.id }}">
-                  Comentar
-                  {% if t.comentarios and (t.comentarios|length) > 0 %}
-                    <span class="badge bg-secondary ms-1">{{ t.comentarios|length }}</span>
+              {% if hay_filtro_obras and selected_insts %}
+                <span class="text-muted small">
+                  {% set nombres = selected_insts | map(attribute='nombre') | list %}
+                  {% if nombres|length <= 3 %}
+                    {{ nombres|join(", ") }}
+                  {% else %}
+                    {{ nombres[:3]|join(", ") }} y {{ nombres|length - 3 }} más
                   {% endif %}
-                </button>
+                </span>
               {% endif %}
+            </div>
 
-            </td>
-          </tr>
+            <div class="small text-muted">
+              Total valorizado visible: <b>${{ "{:,}".format(total_visible).replace(",", ".") }}</b>
+            </div>
+          </div>
 
-          <tr class="collapse" id="cmt{{ t.id }}">
-            <td colspan="10">
-              <div class="p-2 border rounded bg-light">
+          {% if hay_filtro_obras %}
+            <a class="btn btn-sm btn-outline-secondary"
+               href="/turnos?clear_inst=1"
+               title="Quitar filtro por obras (se mantiene el rango de fechas)">
+              <i class="bi bi-x-circle me-1"></i> Quitar filtro
+            </a>
+          {% else %}
+            <a class="btn btn-sm btn-outline-secondary"
+               href="/turnos?clear_all=1"
+               title="Volver al mes actual y limpiar filtros">
+              <i class="bi bi-x-circle me-1"></i> Quitar filtro
+            </a>
+          {% endif %}
 
-                {% if t.comentarios and (t.comentarios|length) > 0 %}
-                  <div class="mb-2">
-                    {% for c in t.comentarios %}
-                      <div class="small mb-2">
-                        <div class="d-flex justify-content-between align-items-start gap-2">
-                          <div>
-                            <b>{{ c.autor.username }}</b>
-                            <span class="text-muted">· {{ c.creado_en.strftime("%d-%m-%Y %H:%M") }}</span>
-                            {% if c.resuelto %}
-                              <span class="badge bg-success ms-2">Resuelto</span>
-                            {% endif %}
-                          </div>
+        </div>
+      </div>
+    </div>
+  {% endif %}
 
-                          {% if current_user.is_authenticated and (current_user.rol or "")|upper in ["ADMIN","OPERADOR"] and not c.resuelto %}
-                            <form method="post" action="/comentarios/{{ c.id }}/resolver" class="m-0">
-                              <button class="btn btn-sm btn-outline-success">Marcar resuelto</button>
-                            </form>
-                          {% endif %}
-                        </div>
-                        <div>{{ c.texto }}</div>
-                      </div>
-                    {% endfor %}
-                  </div>
+  <div class="card mb-3">
+    <div class="card-body">
+      <form method="get" action="/turnos" class="row g-3 align-items-end">
+
+        <div class="col-12 col-lg-4">
+          <label class="form-label">Desde</label>
+          <input type="date" name="desde" class="form-control"
+                 value="{{ (desde.strftime('%Y-%m-%d') if desde else '') }}">
+        </div>
+
+        <div class="col-12 col-lg-4">
+          <label class="form-label">Hasta</label>
+          <input type="date" name="hasta" class="form-control"
+                 value="{{ (hasta.strftime('%Y-%m-%d') if hasta else '') }}">
+        </div>
+
+        <div class="col-12 col-lg-4">
+          <div class="d-flex gap-2">
+            <button class="btn btn-primary w-50" type="submit">Aplicar</button>
+            <a class="btn btn-outline-secondary w-50" href="/turnos?clear_all=1" title="Limpia filtros y vuelve al mes actual">
+              Limpiar
+            </a>
+          </div>
+        </div>
+
+        <div class="col-12">
+          <label class="form-label">Filtrar por obra(s)</label>
+          <select class="form-select" name="inst_id" multiple size="6">
+            {% for inst in (instalaciones_filtro or []) %}
+              <option value="{{ inst.id }}"
+                {% if inst_id_sel and (inst.id in inst_id_sel) %}selected{% endif %}>
+                {{ inst.nombre }}
+              </option>
+            {% endfor %}
+          </select>
+
+          <div class="form-text">
+            Tip: Ctrl (Windows/Linux) o ⌘ (Mac) para seleccionar varias.
+            Si no seleccionas ninguna, se muestra todo tu scope dentro del rango.
+          </div>
+        </div>
+
+      </form>
+    </div>
+  </div>
+
+  {% if current_user.is_authenticated and (current_user.rol or "")|upper in ["ADMIN","OPERADOR"] %}
+    <div class="collapse mb-3" id="ptRango">
+      <div class="card">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+            <div>
+              <h6 class="mb-1">Recalcular turnos PT por rango</h6>
+              <div class="text-muted small">
+                Útil para corregir un período específico sin tocar otros meses.
+              </div>
+            </div>
+          </div>
+
+          <form method="post" action="/turnos/recalcular-pt" class="mt-3"
+                onsubmit="return confirm('Esto recalculará turnos PT (no anulados) dentro del rango indicado y tu scope. ¿Confirmas la operación?');">
+            <div class="row g-3 align-items-end">
+              <div class="col-12 col-md-4">
+                <label class="form-label">Desde</label>
+                <input type="date" name="desde" class="form-control" required>
+              </div>
+              <div class="col-12 col-md-4">
+                <label class="form-label">Hasta</label>
+                <input type="date" name="hasta" class="form-control" required>
+              </div>
+              <div class="col-12 col-md-4 d-grid">
+                <button class="btn btn-outline-secondary" type="submit">
+                  Ejecutar recalculo PT
+                </button>
+              </div>
+            </div>
+
+            <div class="text-muted small mt-2">
+              Nota: No afecta turnos anulados. Solo recalcula PT.
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  {% endif %}
+
+  {% for d in dias %}
+  <div class="card mb-3">
+    <div class="card-body">
+
+      <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+        <div>
+          <h6 class="mb-1">{{ d.nombre_dia }} {{ d.fecha.strftime("%d-%m-%Y") }}</h6>
+          <div class="text-muted small">
+            Guardias: <b>{{ d.guardias_unicos }}</b> ·
+            Turnos: <b>{{ d.cantidad_turnos }}</b> ·
+            Valorizados: <b>{{ d.cantidad_valorizados }}</b>
+          </div>
+        </div>
+
+        <div class="text-end">
+          <div class="text-muted small">Total valorizado</div>
+          <div class="fs-5"><b>${{ "{:,}".format(d.total_valorizado).replace(",", ".") }}</b></div>
+        </div>
+      </div>
+
+      <div class="section-divider my-3"></div>
+
+      <div class="table-responsive table-wrap">
+        <table class="table table-striped table-hover align-middle mb-0">
+          <thead>
+            <tr>
+              <th>Turno</th>
+              <th>Guardia</th>
+              <th>Modalidad</th>
+              <th>Instalación</th>
+              <th>Inicio</th>
+              <th>Fin</th>
+              <th>Hrs. feriado</th>
+              <th>Recargo feriado</th>
+              <th>Monto</th>
+              <th class="text-nowrap text-end">Acciones</th>
+            </tr>
+          </thead>
+
+          <tbody>
+            {% for t in d.turnos %}
+            {% set g = guardias_map.get(t.guardia_rut) %}
+            {% set i = instalaciones_map.get(t.instalacion_id) %}
+
+            <tr>
+              <td>
+                {% if t.turno_codigo == "DIA" %}
+                  <span class="badge badge-info">DÍA</span>
                 {% else %}
-                  <div class="text-muted small mb-2">Sin comentarios.</div>
+                  <span class="badge badge-soft">NOCHE</span>
+                {% endif %}
+
+                {% if t.es_adicional %}
+                  <span class="badge badge-success ms-1">Adicional</span>
+                {% endif %}
+              </td>
+
+              <td>
+                {% if g %}
+                  <div><b>{{ g.ap_paterno }} {{ g.ap_materno or "" }} {{ g.nombres }}</b></div>
+                  <div class="text-muted small">{{ g.rut }}</div>
+                {% else %}
+                  {{ t.guardia_rut }}
+                {% endif %}
+              </td>
+
+              <td>
+                {% if g and g.modalidad %}
+                  <span class="badge badge-soft">{{ g.modalidad }}</span>
+                {% else %}
+                  -
+                {% endif %}
+              </td>
+
+              <td>{{ i.nombre if i else t.instalacion_id }}</td>
+
+              <td>{{ t.inicio_dt.strftime("%d-%m-%Y %H:%M") }}</td>
+              <td>{{ t.fin_dt.strftime("%d-%m-%Y %H:%M") }}</td>
+
+              <td>
+                {% set mins = (t.minutos_feriado or 0) %}
+                {% set h = (mins // 60) %}
+                {% set m = (mins % 60) %}
+                {% if mins == 0 %}0 h{% elif m == 0 %}{{ h }} h{% else %}{{ h }} h {{ m }} m{% endif %}
+              </td>
+
+              <td>
+                {% if t.minutos_feriado and t.minutos_feriado > 0 %}
+                  <div>
+                    <span class="badge badge-warning"
+                          {% if t.feriado_detalle_calculo %}title="{{ t.feriado_detalle_calculo }}"{% endif %}>
+                      {{ t.feriado_tipo_aplicado }} {{ t.feriado_porcentaje_aplicado }}%
+                    </span>
+                  </div>
+                  <div class="text-muted small">{{ t.feriado_descripcion_aplicada or "" }}</div>
+                {% else %}
+                  -
+                {% endif %}
+              </td>
+
+              <td>${{ "{:,}".format(t.monto_total or 0).replace(",", ".") }}</td>
+
+              <td class="text-nowrap text-end">
+                {% if current_user.is_authenticated and (current_user.rol or "")|upper in ["ADMIN","OPERADOR"] %}
+                  <a class="btn btn-sm btn-outline-primary" href="/turnos/{{ t.id }}/editar">Editar</a>
                 {% endif %}
 
                 {% if current_user.is_authenticated and (current_user.rol or "")|upper in ["ADMIN","OPERADOR","REVISOR"] %}
-                  <form method="post" action="/turnos/{{ t.id }}/comentar" class="mt-2">
-                    <div class="input-group">
-                      <input name="texto"
-                             class="form-control"
-                             maxlength="500"
-                             placeholder="Escribe un comentario de revisión (máx 500 caracteres)">
-                      <button class="btn btn-primary">Guardar</button>
-                    </div>
-                  </form>
+                  <button class="btn btn-sm btn-outline-secondary"
+                          type="button"
+                          data-bs-toggle="collapse"
+                          data-bs-target="#cmt{{ t.id }}">
+                    Comentar
+                    {% if t.comentarios and (t.comentarios|length) > 0 %}
+                      <span class="badge badge-soft ms-1">{{ t.comentarios|length }}</span>
+                    {% endif %}
+                  </button>
                 {% endif %}
+              </td>
+            </tr>
 
-              </div>
-            </td>
-          </tr>
+            <tr class="collapse" id="cmt{{ t.id }}">
+              <td colspan="10">
+                <div class="panel p-2">
 
-          {% endfor %}
-        </tbody>
+                  {% if t.comentarios and (t.comentarios|length) > 0 %}
+                    <div class="mb-2">
+                      {% for c in t.comentarios %}
+                        <div class="small mb-2">
+                          <div class="d-flex justify-content-between align-items-start gap-2">
+                            <div>
+                              <b>{{ c.autor.username }}</b>
+                              <span class="text-muted">· {{ c.creado_en.strftime("%d-%m-%Y %H:%M") }}</span>
+                              {% if c.resuelto %}
+                                <span class="badge badge-success ms-2">Resuelto</span>
+                              {% endif %}
+                            </div>
 
-      </table>
+                            {% if current_user.is_authenticated and (current_user.rol or "")|upper in ["ADMIN","OPERADOR"] and not c.resuelto %}
+                              <form method="post" action="/comentarios/{{ c.id }}/resolver" class="m-0">
+                                <button class="btn btn-sm btn-outline-secondary" type="submit">Marcar resuelto</button>
+                              </form>
+                            {% endif %}
+                          </div>
+                          <div>{{ c.texto }}</div>
+                        </div>
+                      {% endfor %}
+                    </div>
+                  {% else %}
+                    <div class="text-muted small mb-2">Sin comentarios.</div>
+                  {% endif %}
+
+                  {% if current_user.is_authenticated and (current_user.rol or "")|upper in ["ADMIN","OPERADOR","REVISOR"] %}
+                    <form method="post" action="/turnos/{{ t.id }}/comentar" class="mt-2">
+                      <div class="input-group">
+                        <input name="texto"
+                               class="form-control"
+                               maxlength="500"
+                               placeholder="Escribe un comentario de revisión (máx 500 caracteres)">
+                        <button class="btn btn-primary" type="submit">Guardar</button>
+                      </div>
+                    </form>
+                  {% endif %}
+
+                </div>
+              </td>
+            </tr>
+
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
     </div>
-
   </div>
+  {% endfor %}
+
+  {% if not dias %}
+    <div class="alert alert-info">No hay turnos para mostrar.</div>
+  {% endif %}
+
 </div>
-{% endfor %}
-
-{% if not dias %}
-<div class="alert alert-info">No hay turnos para mostrar.</div>
-{% endif %}
-
 {% endblock %}

@@ -1,56 +1,91 @@
+{# /web/app/templates/perfil.html #}
 {% extends "base.html" %}
+
+{% block title %}Mi perfil · Turnos Guardias · Grupo CS{% endblock %}
+
 {% block content %}
+<div class="container-fluid py-3">
 
-<div class="page-title">
-  <h5>Mi Perfil</h5>
-  <div class="page-subtitle">Datos de sesión y contacto del usuario activo.</div>
-</div>
+  <div class="d-flex align-items-start justify-content-between gap-3 flex-wrap mb-3">
+    <div class="section-header mb-0">
+      <h1 class="section-title">Mi perfil</h1>
+      <div class="section-subtitle">Datos de sesión y contacto del usuario activo.</div>
+      <div class="section-divider"></div>
+    </div>
 
-<div class="row g-3">
-  <div class="col-12 col-lg-6">
-    <div class="card h-100">
-      <div class="card-header">Identidad</div>
-      <div class="card-body">
-        <div class="mb-2"><span class="text-muted small">Username</span><div class="fw-semibold">{{ u.username }}</div></div>
-        <div class="mb-2"><span class="text-muted small">Nombre completo</span><div class="fw-semibold">{{ u.nombre_completo or "-" }}</div></div>
-        <div class="mb-2"><span class="text-muted small">RUT</span><div class="fw-semibold">{{ u.rut or "-" }}</div></div>
-        <div class="mb-2"><span class="text-muted small">Correo</span><div class="fw-semibold">{{ u.email or "-" }}</div></div>
+    <div class="d-flex gap-2">
+      <a class="btn btn-secondary" href="{{ url_for('main.index') }}">Volver</a>
+    </div>
+  </div>
+
+  <div class="row g-3">
+    <div class="col-12 col-lg-6">
+      <div class="card h-100">
+        <div class="card-header">Identidad</div>
+        <div class="card-body">
+          <div class="mb-3">
+            <div class="text-muted small">Username</div>
+            <div class="fw-semibold">{{ u.username }}</div>
+          </div>
+
+          <div class="mb-3">
+            <div class="text-muted small">Nombre completo</div>
+            <div class="fw-semibold">{{ u.nombre_completo or "-" }}</div>
+          </div>
+
+          <div class="mb-3">
+            <div class="text-muted small">RUT</div>
+            <div class="fw-semibold">{{ u.rut or "-" }}</div>
+          </div>
+
+          <div class="mb-0">
+            <div class="text-muted small">Correo</div>
+            <div class="fw-semibold">{{ u.email or "-" }}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-12 col-lg-6">
+      <div class="card h-100">
+        <div class="card-header">Sesión y auditoría</div>
+        <div class="card-body">
+          <div class="mb-3">
+            <div class="text-muted small">Rol</div>
+            <div class="fw-semibold">{{ (u.rol or "USUARIO")|upper }}</div>
+          </div>
+
+          <div class="mb-3">
+            <div class="text-muted small">Estado</div>
+            <div class="fw-semibold">
+              {% if u.activo %}
+                <span class="badge badge-success">Activo</span>
+              {% else %}
+                <span class="badge badge-muted">Inactivo</span>
+              {% endif %}
+            </div>
+          </div>
+
+          <div class="mb-0">
+            <div class="text-muted small">Último acceso</div>
+            <div class="fw-semibold">
+              {% if u.ultimo_acceso %}
+                {{ u.ultimo_acceso.strftime("%d-%m-%Y %H:%M") }}
+              {% else %}
+                Nunca
+              {% endif %}
+            </div>
+          </div>
+
+          <div class="section-divider my-3"></div>
+
+          <div class="small text-muted">
+            Nota: Si necesitas corregir estos datos, solicita al administrador (o si eres ADMIN, usa Gestión de Usuarios).
+          </div>
+        </div>
       </div>
     </div>
   </div>
 
-  <div class="col-12 col-lg-6">
-    <div class="card h-100">
-      <div class="card-header">Sesión y auditoría</div>
-      <div class="card-body">
-        <div class="mb-2"><span class="text-muted small">Rol</span><div class="fw-semibold">{{ (u.rol or "USUARIO")|upper }}</div></div>
-        <div class="mb-2"><span class="text-muted small">Estado</span>
-          <div class="fw-semibold">
-            {% if u.activo %}
-              <span class="badge badge-success">Activo</span>
-            {% else %}
-              <span class="badge badge-soft">Inactivo</span>
-            {% endif %}
-          </div>
-        </div>
-
-        <div class="mb-2"><span class="text-muted small">Último acceso</span>
-          <div class="fw-semibold">
-            {% if u.ultimo_acceso %}
-              {{ u.ultimo_acceso.strftime("%d-%m-%Y %H:%M") }}
-            {% else %}
-              Nunca
-            {% endif %}
-          </div>
-        </div>
-
-        <div class="divider"></div>
-        <div class="small text-muted">
-          Nota: Si necesitas corregir estos datos, solicita al administrador (o si eres ADMIN, usa Gestión de Usuarios).
-        </div>
-      </div>
-    </div>
-  </div>
 </div>
-
 {% endblock %}

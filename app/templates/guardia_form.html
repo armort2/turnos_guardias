@@ -1,102 +1,123 @@
 {# app/templates/guardia_form.html #}
 {% extends "base.html" %}
+
+{% block title %}
+  {% if modo == "nuevo" %}
+    Nuevo guardia · Turnos Guardias · Grupo CS
+  {% else %}
+    Editar guardia {{ g.rut }} · Turnos Guardias · Grupo CS
+  {% endif %}
+{% endblock %}
+
 {% block content %}
-<div class="card shadow-sm">
-  <div class="card-body">
-    <h5 class="card-title mb-3">
-      {% if modo == "nuevo" %}Nuevo guardia{% else %}Editar guardia {{ g.rut }}{% endif %}
-    </h5>
+<div class="container-fluid py-3">
+  <div class="d-flex align-items-start justify-content-between gap-3 flex-wrap mb-3">
+    <div class="section-header mb-0">
+      <h1 class="section-title">
+        {% if modo == "nuevo" %}Nuevo guardia{% else %}Editar guardia{% endif %}
+      </h1>
+      <div class="section-subtitle">
+        {% if modo == "nuevo" %}
+          Registro de nuevo trabajador de seguridad para asignación de turnos.
+        {% else %}
+          Actualiza antecedentes del guardia y parámetros operativos.
+        {% endif %}
+      </div>
+      <div class="section-divider"></div>
+    </div>
 
-    <form method="post">
-      <div class="row g-3">
-        <div class="col-md-4">
-          <label class="form-label">RUT</label>
-          <input class="form-control" name="rut" value="{{ g.rut if g else '' }}" {% if modo=="editar" %}readonly{% endif %} required>
-          <div class="form-text">Se normaliza automáticamente al guardar.</div>
-        </div>
+    <div class="d-flex gap-2">
+      <a class="btn btn-secondary" href="/guardias">Volver</a>
+    </div>
+  </div>
 
-        <div class="col-md-4">
-          <label class="form-label">Ap. Paterno</label>
-          <input class="form-control" name="ap_paterno" value="{{ g.ap_paterno if g else '' }}" required>
-        </div>
+  <div class="card">
+    <div class="card-body">
+      <form method="post">
+        <div class="row g-3">
+          <div class="col-12 col-md-4">
+            <label class="form-label">RUT</label>
+            <input class="form-control" name="rut" value="{{ g.rut if g else '' }}" {% if modo=="editar" %}readonly{% endif %} required>
+            <div class="form-text">Se normaliza automáticamente al guardar.</div>
+          </div>
 
-        <div class="col-md-4">
-          <label class="form-label">Ap. Materno</label>
-          <input class="form-control" name="ap_materno" value="{{ g.ap_materno if g else '' }}">
-        </div>
+          <div class="col-12 col-md-4">
+            <label class="form-label">Ap. Paterno</label>
+            <input class="form-control" name="ap_paterno" value="{{ g.ap_paterno if g else '' }}" required>
+          </div>
 
-        <div class="col-md-6">
-          <label class="form-label">Nombres</label>
-          <input class="form-control" name="nombres" value="{{ g.nombres if g else '' }}" required>
-        </div>
+          <div class="col-12 col-md-4">
+            <label class="form-label">Ap. Materno</label>
+            <input class="form-control" name="ap_materno" value="{{ g.ap_materno if g else '' }}">
+          </div>
 
-        <div class="col-md-6">
-          <label class="form-label">Cargo</label>
-          <input class="form-control" name="cargo" value="{{ g.cargo if g else '' }}">
-        </div>
+          <div class="col-12 col-md-6">
+            <label class="form-label">Nombres</label>
+            <input class="form-control" name="nombres" value="{{ g.nombres if g else '' }}" required>
+          </div>
 
-        {# ---------------------------------------------------------
-           Empleador (lista fija)
-           --------------------------------------------------------- #}
-        <div class="col-md-6">
-          <label class="form-label">Empleador</label>
-          <select class="form-select" name="empleador" required>
-            <option value="" {% if not g or not g.empleador %}selected{% endif %} disabled>Selecciona empleador…</option>
+          <div class="col-12 col-md-6">
+            <label class="form-label">Cargo</label>
+            <input class="form-control" name="cargo" value="{{ g.cargo if g else '' }}">
+          </div>
 
-            {% set empleadores = [
-              "Constructora Valencia SpA",
-              "Constructora Salem SpA",
-              "Proveedora de Servicios Caronte SpA",
-              "Proveedora de Servicios FMO SpA",
-              "Transportes Terratrán SpA"
-            ] %}
+          <div class="col-12 col-md-6">
+            <label class="form-label">Empleador</label>
+            <select class="form-select" name="empleador" required>
+              <option value="" {% if not g or not g.empleador %}selected{% endif %} disabled>Selecciona empleador…</option>
 
-            {% for e in empleadores %}
-              <option value="{{ e }}" {% if g and g.empleador == e %}selected{% endif %}>{{ e }}</option>
-            {% endfor %}
-          </select>
-          <div class="form-text">Caronte no implica externo; la modalidad manda.</div>
-        </div>
+              {% set empleadores = [
+                "Constructora Valencia SpA",
+                "Constructora Salem SpA",
+                "Proveedora de Servicios Caronte SpA",
+                "Proveedora de Servicios FMO SpA",
+                "Transportes Terratrán SpA"
+              ] %}
 
-        {# ---------------------------------------------------------
-           Obra base (Instalación) desde tabla Instalacion
-           --------------------------------------------------------- #}
-        <div class="col-md-6">
-          <label class="form-label">Obra base (Instalación)</label>
-          <select class="form-select" name="obra_base" required>
-            <option value="" {% if not g or not g.obra_base %}selected{% endif %} disabled>Selecciona obra base…</option>
-            {% for i in instalaciones %}
-              <option value="{{ i.nombre }}" {% if g and g.obra_base == i.nombre %}selected{% endif %}>{{ i.nombre }}</option>
-            {% endfor %}
-          </select>
-          <div class="form-text">La obra base se usa como referencia; los turnos pueden ser en cualquier instalación permitida.</div>
-        </div>
+              {% for e in empleadores %}
+                <option value="{{ e }}" {% if g and g.empleador == e %}selected{% endif %}>{{ e }}</option>
+              {% endfor %}
+            </select>
+            <div class="form-text">Caronte no implica externo; la modalidad manda.</div>
+          </div>
 
-        <div class="col-md-4">
-          <label class="form-label">Modalidad</label>
-          <select class="form-select" name="modalidad" required>
-            <option value="JC" {% if g and g.modalidad=="JC" %}selected{% endif %}>JC (Lun–Vie)</option>
-            <option value="PT" {% if g and g.modalidad=="PT" %}selected{% endif %}>PT (Fines de semana)</option>
-            <option value="EXT" {% if g and g.modalidad=="EXT" %}selected{% endif %}>EXT (Externo)</option>
-          </select>
-        </div>
+          <div class="col-12 col-md-6">
+            <label class="form-label">Obra base (Instalación)</label>
+            <select class="form-select" name="obra_base" required>
+              <option value="" {% if not g or not g.obra_base %}selected{% endif %} disabled>Selecciona obra base…</option>
+              {% for i in instalaciones %}
+                <option value="{{ i.nombre }}" {% if g and g.obra_base == i.nombre %}selected{% endif %}>{{ i.nombre }}</option>
+              {% endfor %}
+            </select>
+            <div class="form-text">La obra base se usa como referencia; los turnos pueden ser en cualquier instalación permitida.</div>
+          </div>
 
-        <div class="col-md-4 d-flex align-items-end">
-          <div class="form-check">
-            <input class="form-check-input" type="checkbox" name="activo" id="activo"
-                   {% if (g and g.activo) or (not g) %}checked{% endif %}>
-            <label class="form-check-label" for="activo">Activo</label>
+          <div class="col-12 col-md-4">
+            <label class="form-label">Modalidad</label>
+            <select class="form-select" name="modalidad" required>
+              <option value="JC" {% if g and g.modalidad=="JC" %}selected{% endif %}>JC (Lun–Vie)</option>
+              <option value="PT" {% if g and g.modalidad=="PT" %}selected{% endif %}>PT (Fines de semana)</option>
+              <option value="EXT" {% if g and g.modalidad=="EXT" %}selected{% endif %}>EXT (Externo)</option>
+            </select>
+          </div>
+
+          <div class="col-12 col-md-4 d-flex align-items-end">
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" name="activo" id="activo"
+                     {% if (g and g.activo) or (not g) %}checked{% endif %}>
+              <label class="form-check-label" for="activo">Activo</label>
+            </div>
           </div>
         </div>
-      </div>
 
-      <div class="mt-4 d-flex gap-2">
-        <button class="btn btn-success" type="submit">
-          {% if modo == "nuevo" %}Crear{% else %}Guardar cambios{% endif %}
-        </button>
-        <a class="btn btn-secondary" href="/guardias">Volver</a>
-      </div>
-    </form>
+        <div class="mt-4 d-flex gap-2 justify-content-end">
+          <button class="btn btn-primary" type="submit">
+            {% if modo == "nuevo" %}Crear{% else %}Guardar cambios{% endif %}
+          </button>
+          <a class="btn btn-secondary" href="/guardias">Cancelar</a>
+        </div>
+      </form>
+    </div>
   </div>
 </div>
 {% endblock %}

@@ -1,15 +1,20 @@
+{# /web/app/templates/index.html #}
 {% extends "base.html" %}
+
+{% block title %}Inicio · Turnos Guardias · Grupo CS{% endblock %}
+
 {% block content %}
 
 {% if not current_user.is_authenticated %}
 
-  <div class="panel">
-    <div class="page-title">
-      <h5>Turnos Guardias</h5>
-      <div class="page-subtitle">Control operativo de turnos, trazabilidad y reportabilidad.</div>
+  <div class="container-fluid py-3">
+    <div class="d-flex align-items-start justify-content-between gap-3 flex-wrap mb-3">
+      <div class="section-header mb-0">
+        <h1 class="section-title">Turnos Guardias</h1>
+        <div class="section-subtitle">Control operativo de turnos, trazabilidad y reportabilidad.</div>
+        <div class="section-divider"></div>
+      </div>
     </div>
-
-    <div class="divider"></div>
 
     <div class="row g-3 align-items-stretch">
       <div class="col-12 col-lg-8">
@@ -50,7 +55,7 @@
               Operativo
             </span>
 
-            <div class="divider"></div>
+            <div class="section-divider my-3"></div>
 
             <div class="small text-muted">
               Si necesitas acceso, solicita credenciales al administrador.
@@ -63,162 +68,165 @@
 
 {% else %}
 
-  <div class="page-title">
-    <h5>Dashboard</h5>
-    <div class="page-subtitle">
-      Vista rápida de operación y accesos directos.
-    </div>
-  </div>
-
-  <div class="row g-3 mb-3">
-    <div class="col-12 col-md-6 col-xl-3">
-      <div class="card h-100">
-        <div class="card-body">
-          <div class="small text-muted">Guardias</div>
-          <div class="fs-3 fw-bold">{{ stats.guardias }}</div>
-          <div class="small text-muted">Total registrados</div>
-        </div>
+  <div class="container-fluid py-3">
+    <div class="d-flex align-items-start justify-content-between gap-3 flex-wrap mb-3">
+      <div class="section-header mb-0">
+        <h1 class="section-title">Dashboard</h1>
+        <div class="section-subtitle">Vista rápida de operación y accesos directos.</div>
+        <div class="section-divider"></div>
       </div>
     </div>
 
-    <div class="col-12 col-md-6 col-xl-3">
-      <div class="card h-100">
-        <div class="card-body">
-          <div class="small text-muted">Instalaciones</div>
-          <div class="fs-3 fw-bold">{{ stats.instalaciones }}</div>
-          <div class="small text-muted">Obras / sedes</div>
-        </div>
-      </div>
-    </div>
-
-    <div class="col-12 col-md-6 col-xl-3">
-      <div class="card h-100">
-        <div class="card-body">
-          <div class="small text-muted">Turnos registrados</div>
-          <div class="fs-3 fw-bold">{{ stats.turnos }}</div>
-          <div class="small text-muted">Histórico (no anulados)</div>
-        </div>
-      </div>
-    </div>
-
-    <div class="col-12 col-md-6 col-xl-3">
-      <div class="card h-100">
-        <div class="card-body">
-          <div class="small text-muted">Feriados cargados</div>
-          <div class="fs-3 fw-bold">{{ stats.feriados }}</div>
-          <div class="small text-muted">Calendario</div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- KPIs adicionales -->
-  <div class="row g-3 mb-3">
-    <div class="col-12 col-md-6 col-xl-4">
-      <div class="card h-100">
-        <div class="card-body">
-          <div class="small text-muted">Turnos del mes</div>
-          <div class="fs-3 fw-bold">{{ stats.turnos_mes }}</div>
-          <div class="small text-muted">No anulados (mes actual)</div>
-        </div>
-      </div>
-    </div>
-
-    <div class="col-12 col-md-6 col-xl-4">
-      <div class="card h-100">
-        <div class="card-body">
-          <div class="small text-muted">Turnos anulados</div>
-          <div class="fs-3 fw-bold">{{ stats.turnos_anulados }}</div>
-          <div class="small text-muted">Histórico</div>
-        </div>
-      </div>
-    </div>
-
-    <div class="col-12 col-md-12 col-xl-4">
-      <div class="card h-100">
-        <div class="card-body">
-          <div class="small text-muted">Último turno registrado</div>
-          <div class="fs-5 fw-bold">
-            {% if stats.ultimo_turno_dt %}
-              {{ stats.ultimo_turno_dt|cl_datetime }}
-            {% else %}
-              -
-            {% endif %}
+    <div class="row g-3 mb-3">
+      <div class="col-12 col-md-6 col-xl-3">
+        <div class="card h-100">
+          <div class="card-body">
+            <div class="small text-muted">Guardias</div>
+            <div class="fs-3 fw-bold">{{ stats.guardias }}</div>
+            <div class="small text-muted">Total registrados</div>
           </div>
-          <div class="small text-muted">Último inicio (no anulado)</div>
         </div>
       </div>
-    </div>
-  </div>
 
-  <div class="row g-3">
-    <div class="col-12 col-lg-6">
-      <div class="card h-100">
-        <div class="card-header">Acciones rápidas</div>
-        <div class="card-body">
-          <div class="d-flex gap-2 flex-wrap">
-
-            <a class="btn btn-primary" href="/turnos/nuevo">
-              <i class="bi bi-clock-history me-2"></i>
-              Registrar turno
-            </a>
-
-            <a class="btn btn-outline-light border" href="/turnos/por-guardia">
-              <i class="bi bi-person-lines-fill me-2"></i>
-              Consulta por trabajador
-            </a>
-
-            <a class="btn btn-outline-light border" href="/guardias">
-              <i class="bi bi-people me-2"></i>
-              Ver guardias
-            </a>
-
-            <a class="btn btn-outline-light border" href="/import-guardias">
-              <i class="bi bi-upload me-2"></i>
-              Importar guardias
-            </a>
-
-            {% if (current_user.rol or "")|upper in ["ADMIN","OPERADOR","REVISOR"] %}
-              <a class="btn btn-outline-light border" href="/reportes/resumen-turnos">
-                <i class="bi bi-bar-chart me-2"></i>
-                Resumen turnos
-              </a>
-            {% endif %}
-
-            {% if (current_user.rol or "")|upper == "ADMIN" %}
-              <a class="btn btn-outline-light border" href="./feriados">
-                <i class="bi bi-calendar-event me-2"></i>
-                Gestionar feriados
-              </a>
-
-              <a class="btn btn-outline-light border" href="./usuarios">
-                <i class="bi bi-person-gear me-2"></i>
-                Gestión de usuarios
-              </a>
-            {% endif %}
-
+      <div class="col-12 col-md-6 col-xl-3">
+        <div class="card h-100">
+          <div class="card-body">
+            <div class="small text-muted">Instalaciones</div>
+            <div class="fs-3 fw-bold">{{ stats.instalaciones }}</div>
+            <div class="small text-muted">Obras / sedes</div>
           </div>
+        </div>
+      </div>
 
-          <div class="divider"></div>
+      <div class="col-12 col-md-6 col-xl-3">
+        <div class="card h-100">
+          <div class="card-body">
+            <div class="small text-muted">Turnos registrados</div>
+            <div class="fs-3 fw-bold">{{ stats.turnos }}</div>
+            <div class="small text-muted">Histórico (no anulados)</div>
+          </div>
+        </div>
+      </div>
 
-          <div class="small text-muted">
-            Sugerencia operativa: prioriza “Registrar turno” para mantener trazabilidad y consistencia en reportes.
+      <div class="col-12 col-md-6 col-xl-3">
+        <div class="card h-100">
+          <div class="card-body">
+            <div class="small text-muted">Feriados cargados</div>
+            <div class="fs-3 fw-bold">{{ stats.feriados }}</div>
+            <div class="small text-muted">Calendario</div>
           </div>
         </div>
       </div>
     </div>
 
-    <div class="col-12 col-lg-6">
-      <div class="card h-100">
-        <div class="card-header">Resumen</div>
-        <div class="card-body">
-          <ul class="mb-0">
-            <li>Perfil activo: <b>{{ (current_user.rol or "USUARIO")|upper }}</b></li>
-            <li>Objetivo: operación ordenada y sin “turnos fantasma”.</li>
-            <li>Próximo paso recomendado: incorporar “puestos” (si lo deciden) para granularidad.</li>
-          </ul>
+    <!-- KPIs adicionales -->
+    <div class="row g-3 mb-3">
+      <div class="col-12 col-md-6 col-xl-4">
+        <div class="card h-100">
+          <div class="card-body">
+            <div class="small text-muted">Turnos del mes</div>
+            <div class="fs-3 fw-bold">{{ stats.turnos_mes }}</div>
+            <div class="small text-muted">No anulados (mes actual)</div>
+          </div>
+        </div>
+      </div>
 
-          {# Si luego quieres: aquí agregamos “últimos 10 turnos” o “pendientes por validar” #}
+      <div class="col-12 col-md-6 col-xl-4">
+        <div class="card h-100">
+          <div class="card-body">
+            <div class="small text-muted">Turnos anulados</div>
+            <div class="fs-3 fw-bold">{{ stats.turnos_anulados }}</div>
+            <div class="small text-muted">Histórico</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-12 col-md-12 col-xl-4">
+        <div class="card h-100">
+          <div class="card-body">
+            <div class="small text-muted">Último turno registrado</div>
+            <div class="fs-5 fw-bold">
+              {% if stats.ultimo_turno_dt %}
+                {{ stats.ultimo_turno_dt|cl_datetime }}
+              {% else %}
+                -
+              {% endif %}
+            </div>
+            <div class="small text-muted">Último inicio (no anulado)</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="row g-3">
+      <div class="col-12 col-lg-6">
+        <div class="card h-100">
+          <div class="card-header">Acciones rápidas</div>
+          <div class="card-body">
+            <div class="d-flex gap-2 flex-wrap">
+
+              <a class="btn btn-primary" href="/turnos/nuevo">
+                <i class="bi bi-clock-history me-2"></i>
+                Registrar turno
+              </a>
+
+              <a class="btn btn-outline-light border" href="/turnos/por-guardia">
+                <i class="bi bi-person-lines-fill me-2"></i>
+                Consulta por trabajador
+              </a>
+
+              <a class="btn btn-outline-light border" href="/guardias">
+                <i class="bi bi-people me-2"></i>
+                Ver guardias
+              </a>
+
+              <a class="btn btn-outline-light border" href="/import-guardias">
+                <i class="bi bi-upload me-2"></i>
+                Importar guardias
+              </a>
+
+              {% if (current_user.rol or "")|upper in ["ADMIN","OPERADOR","REVISOR"] %}
+                <a class="btn btn-outline-light border" href="/reportes/resumen-turnos">
+                  <i class="bi bi-bar-chart me-2"></i>
+                  Resumen turnos
+                </a>
+              {% endif %}
+
+              {% if (current_user.rol or "")|upper == "ADMIN" %}
+                <a class="btn btn-outline-light border" href="./feriados">
+                  <i class="bi bi-calendar-event me-2"></i>
+                  Gestionar feriados
+                </a>
+
+                <a class="btn btn-outline-light border" href="./usuarios">
+                  <i class="bi bi-person-gear me-2"></i>
+                  Gestión de usuarios
+                </a>
+              {% endif %}
+
+            </div>
+
+            <div class="section-divider my-3"></div>
+
+            <div class="small text-muted">
+              Sugerencia operativa: prioriza “Registrar turno” para mantener trazabilidad y consistencia en reportes.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-12 col-lg-6">
+        <div class="card h-100">
+          <div class="card-header">Resumen</div>
+          <div class="card-body">
+            <ul class="mb-0">
+              <li>Perfil activo: <b>{{ (current_user.rol or "USUARIO")|upper }}</b></li>
+              <li>Objetivo: operación ordenada y sin “turnos fantasma”.</li>
+              <li>Próximo paso recomendado: incorporar “puestos” (si lo deciden) para granularidad.</li>
+            </ul>
+
+            {# Si luego quieres: aquí agregamos “últimos 10 turnos” o “pendientes por validar” #}
+          </div>
         </div>
       </div>
     </div>

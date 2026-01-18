@@ -1,68 +1,104 @@
+{# /web/app/templates/nuevo_turno.html #}
 {% extends "base.html" %}
+
+{% block title %}Registrar turno · Turnos Guardias · Grupo CS{% endblock %}
+
 {% block content %}
-<div class="row g-3">
-  <div class="col-lg-6">
-    <div class="card shadow-sm">
-      <div class="card-body">
-        <h5 class="card-title mb-3">Registrar turno</h5>
+<div class="container-fluid py-3">
 
-        <form method="post">
-          <div class="mb-3">
-            <label class="form-label">Instalación</label>
-            <select class="form-select" name="instalacion_id" required>
-              {% for i in instalaciones %}
-                <option value="{{ i.id }}">{{ i.nombre }}</option>
-              {% endfor %}
-            </select>
+  <div class="d-flex align-items-start justify-content-between gap-3 flex-wrap mb-3">
+    <div class="section-header mb-0">
+      <h1 class="section-title">Registrar turno</h1>
+      <div class="section-subtitle">Ingreso operativo de turno con autocompletado por guardia y reglas de cálculo.</div>
+      <div class="section-divider"></div>
+    </div>
+
+    <div class="d-flex gap-2">
+      <a class="btn btn-secondary" href="/turnos">
+        Volver
+      </a>
+    </div>
+  </div>
+
+  <div class="row g-3">
+    <div class="col-12 col-lg-6">
+      <div class="card h-100">
+        <div class="card-body">
+          <form method="post" class="row g-3">
+
+            <div class="col-12">
+              <label class="form-label">Instalación</label>
+              <select class="form-select" name="instalacion_id" required>
+                {% for i in instalaciones %}
+                  <option value="{{ i.id }}">{{ i.nombre }}</option>
+                {% endfor %}
+              </select>
+            </div>
+
+            <div class="col-12 col-md-6">
+              <label class="form-label">Fecha del turno (inicio)</label>
+              <input class="form-control" type="date" name="fecha" required>
+            </div>
+
+            <div class="col-12 col-md-6">
+              <label class="form-label">Tipo de turno</label>
+              <select class="form-select" name="turno_codigo" required>
+                <option value="DIA">Día (08:00–20:00)</option>
+                <option value="NOCHE">Noche (20:00–08:00)</option>
+              </select>
+            </div>
+
+            <div class="col-12">
+              <label class="form-label">Guardia (RUT)</label>
+              <input class="form-control"
+                     name="guardia_rut"
+                     list="guardiasList"
+                     placeholder="Ej: 12.345.678-9"
+                     required>
+              <datalist id="guardiasList"></datalist>
+              <div class="form-text">Tip: escribe apellido o RUT; el listado se llena automáticamente.</div>
+            </div>
+
+            <div class="col-12">
+              <label class="form-label">Observación</label>
+              <input class="form-control" name="observacion" maxlength="250">
+            </div>
+
+            <div class="col-12 d-flex gap-2 justify-content-end">
+              <button class="btn btn-primary" type="submit">Guardar turno</button>
+              <a class="btn btn-secondary" href="/turnos">Cancelar</a>
+            </div>
+
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-12 col-lg-6">
+      <div class="card h-100">
+        <div class="card-body">
+          <h6 class="mb-2">Reglas aplicadas</h6>
+          <ul class="mb-0">
+            <li>JC: adicional si cae en sábado/domingo o feriado (según minutos).</li>
+            <li>PT: adicional si cae en lunes–viernes o feriado (según minutos).</li>
+            <li>EXT: todo es adicional.</li>
+            <li>Feriado: recargo por minutos intersectados con 00:00–24:00 del feriado.</li>
+          </ul>
+
+          <div class="section-divider my-3"></div>
+
+          <div class="small text-muted">
+            Consejo operativo: registra el turno apenas se confirme la asistencia; te ahorra “arqueología” al cierre de mes.
           </div>
-
-          <div class="mb-3">
-            <label class="form-label">Fecha del turno (fecha de inicio)</label>
-            <input class="form-control" type="date" name="fecha" required>
-          </div>
-
-          <div class="mb-3">
-            <label class="form-label">Tipo de turno</label>
-            <select class="form-select" name="turno_codigo" required>
-              <option value="DIA">Día (08:00–20:00)</option>
-              <option value="NOCHE">Noche (20:00–08:00)</option>
-            </select>
-          </div>
-
-          <div class="mb-3">
-            <label class="form-label">Guardia (RUT)</label>
-            <input class="form-control" name="guardia_rut" list="guardiasList" placeholder="Ej: 12.345.678-9" required>
-            <datalist id="guardiasList"></datalist>
-            <div class="form-text">Tip: escribe apellido o RUT; el listado se llena automáticamente.</div>
-          </div>
-
-          <div class="mb-3">
-            <label class="form-label">Observación</label>
-            <input class="form-control" name="observacion" maxlength="250">
-          </div>
-
-          <button class="btn btn-success" type="submit">Guardar turno</button>
-        </form>
-
+        </div>
       </div>
     </div>
   </div>
 
-  <div class="col-lg-6">
-    <div class="card shadow-sm">
-      <div class="card-body">
-        <h6 class="mb-2">Reglas aplicadas</h6>
-        <ul class="mb-0">
-          <li>JC: adicional si cae en sábado/domingo o feriado (según minutos).</li>
-          <li>PT: adicional si cae en lunes–viernes o feriado (según minutos).</li>
-          <li>EXT: todo es adicional.</li>
-          <li>Feriado: recargo por minutos intersectados con 00:00–24:00 del feriado.</li>
-        </ul>
-      </div>
-    </div>
-  </div>
 </div>
+{% endblock %}
 
+{% block scripts %}
 <script>
 async function cargarGuardias(q) {
   const res = await fetch(`/api/guardias?q=${encodeURIComponent(q)}`);

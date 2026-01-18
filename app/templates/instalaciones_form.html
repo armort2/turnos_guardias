@@ -1,39 +1,54 @@
 {# app/templates/instalacion_form.html #}
 {% extends "base.html" %}
+
+{% block title %}
+  {% if modo == "nuevo" %}
+    Nueva obra · Turnos Guardias · Grupo CS
+  {% else %}
+    Editar obra · Turnos Guardias · Grupo CS
+  {% endif %}
+{% endblock %}
+
 {% block content %}
+<div class="container-fluid py-3">
+  <div class="d-flex align-items-start justify-content-between gap-3 flex-wrap mb-3">
+    <div class="section-header mb-0">
+      <h1 class="section-title">
+        {% if modo == "nuevo" %}Nueva obra{% else %}Editar obra{% endif %}
+      </h1>
+      <div class="section-subtitle">Catálogo maestro de instalaciones/obras.</div>
+      <div class="section-divider"></div>
+    </div>
 
-<div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
-  <div>
-    <h3 class="mb-0">
-      {% if modo == "nuevo" %}Nueva obra{% else %}Editar obra{% endif %}
-    </h3>
-    <div class="text-muted">Catálogo maestro de instalaciones/obras.</div>
+    <div class="d-flex gap-2">
+      <a class="btn btn-secondary" href="{{ url_for('main.instalaciones_listado') }}">
+        <i class="bi bi-arrow-left me-1"></i> Volver
+      </a>
+    </div>
   </div>
-  <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('main.instalaciones_listado') }}">
-    <i class="bi bi-arrow-left me-1"></i> Volver
-  </a>
+
+  <div class="card">
+    <div class="card-body">
+      <form method="post" class="row g-3 align-items-end">
+        <div class="col-12 col-md-8">
+          <label class="form-label">Nombre de la obra/instalación</label>
+          <input
+            type="text"
+            name="nombre"
+            class="form-control"
+            value="{{ inst.nombre if inst else '' }}"
+            placeholder="Ej: Condominio Quinta Mar · Portería"
+            required
+          >
+        </div>
+
+        <div class="col-12 col-md-4 d-grid">
+          <button class="btn btn-primary" type="submit">
+            <i class="bi bi-save me-1"></i> Guardar
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
 </div>
-
-<form method="post" class="card card-body">
-  <div class="row g-3">
-    <div class="col-12 col-md-8">
-      <label class="form-label">Nombre de la obra/instalación</label>
-      <input
-        type="text"
-        name="nombre"
-        class="form-control"
-        value="{{ inst.nombre if inst else '' }}"
-        placeholder="Ej: Condominio Quinta Mar · Portería"
-        required
-      >
-    </div>
-
-    <div class="col-12 col-md-4 d-flex align-items-end">
-      <button class="btn btn-primary w-100" type="submit">
-        <i class="bi bi-save me-1"></i> Guardar
-      </button>
-    </div>
-  </div>
-</form>
-
 {% endblock %}

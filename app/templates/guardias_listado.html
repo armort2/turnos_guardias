@@ -1,54 +1,84 @@
+{# /web/app/templates/guardias_listado.html #}
 {% extends "base.html" %}
+
+{% block title %}Guardias · Turnos Guardias · Grupo CS{% endblock %}
+
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-3">
-  <h5 class="mb-0">Guardias</h5>
-  <a class="btn btn-primary" href="/guardias/nuevo">+ Nuevo guardia</a>
-</div>
-
-<div class="card shadow-sm">
-  <div class="card-body">
-    <form class="row g-2 mb-3" method="get" action="/guardias">
-      <div class="col-md-10">
-        <input class="form-control" name="q" value="{{ q }}" placeholder="Buscar por RUT, nombre, empleador, obra…">
-      </div>
-      <div class="col-md-2">
-        <button class="btn btn-outline-secondary w-100" type="submit">Buscar</button>
-      </div>
-    </form>
-
-    <div class="table-responsive">
-      <table class="table table-sm align-middle">
-        <thead>
-          <tr>
-            <th>RUT</th>
-            <th>Nombre</th>
-            <th>Modalidad</th>
-            <th>Empleador</th>
-            <th>Obra</th>
-            <th>Activo</th>
-            <th>Acciones</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for g in guardias %}
-          <tr class="{% if not g.activo %}table-secondary{% endif %}">
-            <td>{{ g.rut }}</td>
-            <td>{{ g.ap_paterno }} {{ g.ap_materno or '' }} {{ g.nombres }}</td>
-            <td>{{ g.modalidad }}</td>
-            <td>{{ g.empleador }}</td>
-            <td>{{ g.obra_base }}</td>
-            <td>{{ "Sí" if g.activo else "No" }}</td>
-            <td>
-              <a class="btn btn-sm btn-outline-primary" href="/guardias/{{ g.rut }}/editar">Editar</a>
-            </td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
+<div class="container-fluid py-3">
+  <div class="d-flex align-items-start justify-content-between gap-3 flex-wrap mb-3">
+    <div class="section-header mb-0">
+      <h1 class="section-title">Guardias</h1>
+      <div class="section-subtitle">Administración de dotación, modalidad, empleador y obra base.</div>
+      <div class="section-divider"></div>
     </div>
 
-    <div class="text-muted small">
-      Mostrando hasta 200 resultados.
+    <div class="d-flex gap-2">
+      <a class="btn btn-primary" href="/guardias/nuevo">
+        + Nuevo guardia
+      </a>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-body">
+      <form class="row g-3 mb-3" method="get" action="/guardias">
+        <div class="col-12 col-md-10">
+          <label class="form-label">Búsqueda</label>
+          <input class="form-control" name="q" value="{{ q }}" placeholder="Buscar por RUT, nombre, empleador, obra…">
+        </div>
+        <div class="col-12 col-md-2 d-grid">
+          <button class="btn btn-primary" type="submit">Buscar</button>
+        </div>
+      </form>
+
+      <div class="table-responsive table-wrap">
+        <table class="table table-striped table-hover align-middle mb-0">
+          <thead>
+            <tr>
+              <th>RUT</th>
+              <th>Nombre</th>
+              <th>Modalidad</th>
+              <th>Empleador</th>
+              <th>Obra base</th>
+              <th>Estado</th>
+              <th class="text-end" style="width:120px;">Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for g in guardias %}
+            <tr>
+              <td>{{ g.rut }}</td>
+              <td>{{ g.ap_paterno }} {{ g.ap_materno or '' }} {{ g.nombres }}</td>
+              <td>{{ g.modalidad }}</td>
+              <td>{{ g.empleador }}</td>
+              <td>{{ g.obra_base }}</td>
+              <td>
+                {% if g.activo %}
+                  <span class="badge badge-success">Activo</span>
+                {% else %}
+                  <span class="badge badge-muted">Inactivo</span>
+                {% endif %}
+              </td>
+              <td class="text-end">
+                <a class="btn btn-sm btn-outline-primary" href="/guardias/{{ g.rut }}/editar">Editar</a>
+              </td>
+            </tr>
+            {% endfor %}
+
+            {% if not guardias %}
+            <tr>
+              <td colspan="7" class="text-center text-muted py-3">
+                No hay resultados para la búsqueda.
+              </td>
+            </tr>
+            {% endif %}
+          </tbody>
+        </table>
+      </div>
+
+      <div class="text-muted small mt-2">
+        Mostrando hasta 200 resultados.
+      </div>
     </div>
   </div>
 </div>

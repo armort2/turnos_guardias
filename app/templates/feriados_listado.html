@@ -1,113 +1,107 @@
+{# /web/app/templates/feriados_listado.html #}
 {% extends "base.html" %}
+
+{% block title %}Feriados · Turnos Guardias · Grupo CS{% endblock %}
+
 {% block content %}
+<div class="container-fluid py-3">
+  <div class="d-flex align-items-start justify-content-between gap-3 flex-wrap mb-3">
+    <div class="section-header mb-0">
+      <h1 class="section-title">Gestión de feriados</h1>
+      <div class="section-subtitle">Define feriados normales e irrenunciables utilizados en el cálculo de turnos y recargos.</div>
+      <div class="section-divider"></div>
+    </div>
 
-<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
-  <div>
-    <h5 class="mb-0">Gestión de Feriados</h5>
-    <div class="text-muted small">
-      Define feriados normales e irrenunciables utilizados en el cálculo de turnos y recargos.
+    <div class="d-flex gap-2">
+      <a class="btn btn-outline-secondary" href="{{ url_for('main.config_recargos') }}">
+        Configurar recargos
+      </a>
+      <a class="btn btn-secondary" href="{{ url_for('main.index') }}">
+        Volver al dashboard
+      </a>
     </div>
   </div>
 
-  <div class="d-flex gap-2">
-    <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('main.config_recargos') }}">
-      Configurar recargos
-    </a>
-    <a class="btn btn-outline-primary btn-sm" href="{{ url_for('main.index') }}">
-      Volver al dashboard
-    </a>
+  <div class="card mb-3">
+    <div class="card-body">
+      <h6 class="mb-3">Agregar o actualizar feriado</h6>
+
+      <form method="post" class="row g-3 align-items-end">
+        <div class="col-12 col-md-3">
+          <label class="form-label">Fecha</label>
+          <input class="form-control" type="date" name="fecha" required>
+        </div>
+
+        <div class="col-12 col-md-3">
+          <label class="form-label">Tipo de feriado</label>
+          <select class="form-select" name="tipo">
+            <option value="NORMAL">Normal</option>
+            <option value="IRRENUNCIABLE">Irrenunciable</option>
+          </select>
+        </div>
+
+        <div class="col-12 col-md-4">
+          <label class="form-label">Descripción</label>
+          <input class="form-control" type="text" name="descripcion" placeholder="Ej: Inmaculada Concepción">
+        </div>
+
+        <div class="col-12 col-md-2 d-grid">
+          <button class="btn btn-primary" type="submit">Guardar</button>
+        </div>
+      </form>
+    </div>
   </div>
-</div>
 
-<!-- Formulario -->
-<div class="card shadow-sm mb-3">
-  <div class="card-body">
-    <h6 class="mb-3">Agregar o actualizar feriado</h6>
+  <div class="card">
+    <div class="card-body">
+      <h6 class="mb-3">Feriados registrados</h6>
 
-    <form method="post" class="row g-3 align-items-end">
-      <div class="col-md-3">
-        <label class="form-label small text-muted">Fecha</label>
-        <input class="form-control" type="date" name="fecha" required>
+      <div class="table-responsive table-wrap">
+        <table class="table table-striped table-hover align-middle mb-0">
+          <thead>
+            <tr>
+              <th>Fecha</th>
+              <th>Tipo</th>
+              <th>Descripción</th>
+              <th class="text-end" style="width:140px;">Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for f in feriados %}
+            <tr>
+              <td>{{ f.fecha.strftime("%d-%m-%Y") }}</td>
+              <td>
+                {% if f.tipo == "IRRENUNCIABLE" %}
+                  <span class="badge badge-success">Irrenunciable</span>
+                {% else %}
+                  <span class="badge badge-muted">Normal</span>
+                {% endif %}
+              </td>
+              <td>{{ f.descripcion or "—" }}</td>
+              <td class="text-end">
+                <form method="post"
+                      action="./{{ f.fecha.strftime('%Y-%m-%d') }}/eliminar"
+                      onsubmit="return confirm('¿Eliminar este feriado?');">
+                  <button class="btn btn-sm btn-outline-danger" type="submit">
+                    Eliminar
+                  </button>
+                </form>
+              </td>
+            </tr>
+            {% endfor %}
+
+            {% if not feriados %}
+            <tr>
+              <td colspan="4" class="text-center text-muted py-3">
+                No hay feriados registrados.
+              </td>
+            </tr>
+            {% endif %}
+          </tbody>
+        </table>
       </div>
 
-      <div class="col-md-3">
-        <label class="form-label small text-muted">Tipo de feriado</label>
-        <select class="form-select" name="tipo">
-          <option value="NORMAL">Normal</option>
-          <option value="IRRENUNCIABLE">Irrenunciable</option>
-        </select>
-      </div>
-
-      <div class="col-md-4">
-        <label class="form-label small text-muted">Descripción</label>
-        <input class="form-control"
-               type="text"
-               name="descripcion"
-               placeholder="Ej: Inmaculada Concepción">
-      </div>
-
-      <div class="col-md-2 d-grid">
-        <button class="btn btn-success">
-          Guardar
-        </button>
-      </div>
-    </form>
-  </div>
-</div>
-
-<!-- Listado -->
-<div class="card shadow-sm">
-  <div class="card-body">
-    <h6 class="mb-3">Feriados registrados</h6>
-
-    <div class="table-responsive">
-      <table class="table table-sm align-middle">
-        <thead class="table-light">
-          <tr>
-            <th>Fecha</th>
-            <th>Tipo</th>
-            <th>Descripción</th>
-            <th class="text-end" style="width:120px;">Acciones</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for f in feriados %}
-          <tr>
-            <td>{{ f.fecha.strftime("%d-%m-%Y") }}</td>
-
-            <td>
-              {% if f.tipo == "IRRENUNCIABLE" %}
-                <span class="badge bg-danger">Irrenunciable</span>
-              {% else %}
-                <span class="badge bg-secondary">Normal</span>
-              {% endif %}
-            </td>
-
-            <td>{{ f.descripcion or "—" }}</td>
-
-            <td class="text-end">
-              <form method="post"
-                    action="./{{ f.fecha.strftime('%Y-%m-%d') }}/eliminar"
-                    onsubmit="return confirm('¿Eliminar este feriado?');">
-                <button class="btn btn-sm btn-outline-danger">
-                  Eliminar
-                </button>
-              </form>
-            </td>
-          </tr>
-          {% endfor %}
-
-          {% if not feriados %}
-          <tr>
-            <td colspan="4" class="text-center text-muted py-3">
-              No hay feriados registrados.
-            </td>
-          </tr>
-          {% endif %}
-        </tbody>
-      </table>
     </div>
   </div>
 </div>
-
 {% endblock %}

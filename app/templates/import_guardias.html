@@ -1,17 +1,45 @@
+{# /web/app/templates/import_guardias.html #}
 {% extends "base.html" %}
+
+{% block title %}Importar guardias · Turnos Guardias · Grupo CS{% endblock %}
+
 {% block content %}
-<div class="card shadow-sm">
-  <div class="card-body">
-    <h5 class="card-title mb-3">Importar guardias desde Excel (.xlsx)</h5>
-    <p class="text-muted">
-      Columnas esperadas: RUT, Ap. Paterno, Ap. Materno, Nombres, Labor a realizar, Nombre Obra, Nombre Empleador.
-    </p>
-    <form method="post" enctype="multipart/form-data">
-      <div class="mb-3">
-        <input class="form-control" type="file" name="file" accept=".xlsx" required>
+<div class="container-fluid py-3">
+  <div class="d-flex align-items-start justify-content-between gap-3 flex-wrap mb-3">
+    <div class="section-header mb-0">
+      <h1 class="section-title">Importar guardias</h1>
+      <div class="section-subtitle">Carga masiva desde Excel (.xlsx) con validación básica de columnas.</div>
+      <div class="section-divider"></div>
+    </div>
+
+    <div class="d-flex gap-2">
+      <a class="btn btn-secondary" href="/guardias">Volver</a>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-body">
+      <p class="text-muted mb-3">
+        Columnas esperadas: RUT, Ap. Paterno, Ap. Materno, Nombres, Labor a realizar, Nombre Obra, Nombre Empleador.
+      </p>
+
+      <form method="post" enctype="multipart/form-data" class="row g-3">
+        <div class="col-12 col-lg-8">
+          <label class="form-label">Archivo Excel</label>
+          <input class="form-control" type="file" name="file" accept=".xlsx" required>
+        </div>
+
+        <div class="col-12 col-lg-4 d-grid align-items-end">
+          <button class="btn btn-primary" type="submit">Importar</button>
+        </div>
+      </form>
+
+      <div class="section-divider my-3"></div>
+
+      <div class="small text-muted">
+        Sugerencia: valida que el RUT venga en formato legible (con o sin puntos) para evitar duplicidades.
       </div>
-      <button class="btn btn-primary" type="submit">Importar</button>
-    </form>
+    </div>
   </div>
 </div>
 {% endblock %}
