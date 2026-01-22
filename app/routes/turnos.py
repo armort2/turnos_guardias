@@ -123,6 +123,12 @@ GUARDIAS_SIEMPRE_VALORIZAR = {
     "10700859-4": 33000,  # Mauricio Díaz: siempre adicional, base 33.000
 }
 
+# Obras con base especial (se sigue aplicando recargo feriado sobre esta base)
+INSTALACIONES_BASE_ESPECIAL = {
+    2: 25000,  # Doña Josefina
+    3: 25000,  # Don Francisco
+}
+
 
 def es_turno_adicional(guardia: Guardia, inicio_dt: datetime, fin_dt: datetime) -> bool:
     if guardia.rut in GUARDIAS_SIEMPRE_VALORIZAR:
@@ -144,10 +150,16 @@ def es_turno_adicional(guardia: Guardia, inicio_dt: datetime, fin_dt: datetime) 
     return False
 
 
-def monto_base_turno(guardia: Guardia) -> int:
+def monto_base_turno(guardia: Guardia, instalacion_id: int | None = None) -> int:
+    # 1) Base especial por obra (manda sobre modalidad EXT)
+    if instalacion_id in INSTALACIONES_BASE_ESPECIAL:
+        return int(INSTALACIONES_BASE_ESPECIAL[instalacion_id])
+
+    # 2) Excepciones por persona (si aplica)
     if guardia.rut in GUARDIAS_SIEMPRE_VALORIZAR:
         return int(GUARDIAS_SIEMPRE_VALORIZAR[guardia.rut])
 
+    # 3) Reglas por modalidad
     if guardia.modalidad == "EXT":
         return 30000
 
@@ -165,7 +177,7 @@ def recalcular_turno(
     adicional = es_turno_adicional(guardia, inicio_dt, fin_dt)
 
     if adicional:
-        base = monto_base_turno(guardia)
+        base = monto_base_turno(guardia, t.instalacion_id)
 
         pct = info["pct_aplicado"] or 0
         if pct > 0 and minutos_feriado > 0 and minutos_totales > 0:
@@ -709,6 +721,76 @@ def recalcular_turnos_pt():
 
     db.session.commit()
     flash(f"Recalculo PT OK. Turnos recalculados: {recalculados}.", "success")
+    return redirect(request.referrer or url_for("main.turnos_listado"))
+
+
+# -------------------------------------------------------------------
+# Recalcular masivamente turnos obras especiales (2 y 3)
+# -------------------------------------------------------------------
+@main.post("/turnos/recalcular-obras-especiales")
+@login_required
+@role_required("ADMIN", "OPERADOR")
+def recalcular_turnos_obras_especiales():
+    # Obras con base especial
+    inst_ids_especiales = [2, 3]
+
+    desde_str = (request.form.get("desde") or "").strip()
+    hasta_str = (request.form.get("hasta") or "").strip()
+
+    if not desde_str or not hasta_str:
+        flash("Debes indicar rango de fechas (desde / hasta).", "danger")
+        return redirect(request.referrer or url_for("main.turnos_listado"))
+
+    try:
+        desde = datetime.strptime(desde_str, "%Y-%m-%d").date()
+        hasta = datetime.strptime(hasta_str, "%Y-%m-%d").date()
+    except Exception:
+        flash("Rango inválido (formato YYYY-MM-DD).", "danger")
+        return redirect(request.referrer or url_for("main.turnos_listado"))
+
+    if hasta < desde:
+        desde, hasta = hasta, desde
+
+    dt_desde = datetime.combine(desde, time(0, 0))
+    dt_hasta_excl = datetime.combine(hasta + timedelta(days=1), time(0, 0))
+
+    # Scope por permisos (si no es admin, solo obras asignadas)
+    if current_user.es_admin():
+        inst_scope = None
+    else:
+        inst_scope = [i.id for i in (current_user.instalaciones or [])]
+        if not inst_scope:
+            flash("No tienes obras asignadas.", "warning")
+            return redirect(request.referrer or url_for("main.turnos_listado"))
+
+    q = (
+        db.session.query(TurnoRegistro)
+        .join(Guardia, Guardia.rut == TurnoRegistro.guardia_rut)
+        .filter(TurnoRegistro.anulado.is_(False))
+        .filter(TurnoRegistro.instalacion_id.in_(inst_ids_especiales))
+        .filter(TurnoRegistro.inicio_dt >= dt_desde)
+        .filter(TurnoRegistro.inicio_dt < dt_hasta_excl)
+    )
+
+    if inst_scope is not None:
+        # Respeta scope del usuario
+        q = q.filter(TurnoRegistro.instalacion_id.in_(inst_scope))
+
+    turnos = q.order_by(TurnoRegistro.id.asc()).all()
+
+    recalculados = 0
+    for t in turnos:
+        g = Guardia.query.get(t.guardia_rut)
+        if not g:
+            continue
+        recalcular_turno(t, g, t.inicio_dt, t.fin_dt)
+        recalculados += 1
+
+    db.session.commit()
+    flash(
+        f"Recalculo OK (obras especiales 2 y 3). Turnos recalculados: {recalculados}.",
+        "success",
+    )
     return redirect(request.referrer or url_for("main.turnos_listado"))
 
 

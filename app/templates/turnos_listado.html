@@ -16,7 +16,10 @@
     <div class="d-flex gap-2 flex-wrap">
       {% if current_user.is_authenticated and (current_user.rol or "")|upper in ["ADMIN","OPERADOR"] %}
         <a class="btn btn-primary" href="/turnos/nuevo">+ Registrar turno</a>
+      {% endif %}
 
+      {# Recalculos: SOLO ADMIN #}
+      {% if current_user.is_authenticated and (current_user.rol or "")|upper == "ADMIN" %}
         <form method="post" action="/turnos/recalcular-pt" class="m-0"
               onsubmit="return confirm('Esto recalculará TODOS los turnos PT (no anulados) del mes en curso dentro de tu scope. ¿Deseas continuar?');">
           <button class="btn btn-outline-secondary" type="submit">
@@ -30,6 +33,27 @@
                 data-bs-target="#ptRango">
           Recalcular PT por rango
         </button>
+
+        <button class="btn btn-outline-secondary"
+                type="button"
+                data-bs-toggle="collapse"
+                data-bs-target="#recalcEspeciales">
+          Recalcular Obras Especiales (2 y 3)
+        </button>
+
+        <div class="collapse mt-2" id="recalcEspeciales">
+          <div class="card card-body">
+            <form method="post" action="/turnos/recalcular-obras-especiales" class="d-flex gap-2 flex-wrap"
+                  onsubmit="return confirm('Esto recalculará turnos (no anulados) en obras 2 y 3 para el rango indicado. ¿Continuar?');">
+              <input class="form-control" type="date" name="desde" required>
+              <input class="form-control" type="date" name="hasta" required>
+              <button class="btn btn-primary" type="submit">Recalcular</button>
+            </form>
+            <div class="small text-muted mt-2">
+              Aplica base $25.000 en Doña Josefina (2) y Don Francisco (3), manteniendo recargos.
+            </div>
+          </div>
+        </div>
       {% endif %}
     </div>
   </div>
@@ -148,7 +172,8 @@
     </div>
   </div>
 
-  {% if current_user.is_authenticated and (current_user.rol or "")|upper in ["ADMIN","OPERADOR"] %}
+  {# Recalculo PT por rango: SOLO ADMIN (porque el botón que lo abre es admin) #}
+  {% if current_user.is_authenticated and (current_user.rol or "")|upper == "ADMIN" %}
     <div class="collapse mb-3" id="ptRango">
       <div class="card">
         <div class="card-body">
